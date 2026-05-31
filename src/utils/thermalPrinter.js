@@ -371,7 +371,7 @@ export async function printInvoiceThermal(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.95 ? 0.5 : 1);
+    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.99 ? 0.5 : 1);
     totalWt += wt;
     totalFine += roundedFine;
 
@@ -441,6 +441,308 @@ export async function printInvoiceThermal(invoice) {
     </table>
     <p style="margin-top: 30px; color: #666;">Printed: ${new Date().toLocaleString('en-GB')}</p>
   `;
+
+  htmlContent += `
+    </body>
+    </html>
+  `;
+
+  // Print directly without opening new tab using iframe
+  const printFrame = document.createElement('iframe');
+  printFrame.style.position = 'absolute';
+  printFrame.style.top = '-9999px';
+  printFrame.style.left = '-9999px';
+  document.body.appendChild(printFrame);
+  
+  const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+  printDoc.open();
+  printDoc.write(htmlContent);
+  printDoc.close();
+  
+  printFrame.contentWindow.focus();
+  printFrame.contentWindow.print();
+  
+  setTimeout(() => {
+    document.body.removeChild(printFrame);
+  }, 1000);
+
+  return true;
+}
+
+export async function printSalesInvoiceBluetooth(invoice) {
+  let htmlContent = '';
+  
+  const partyName = invoice.partyId?.partyName || invoice.partyName || '-';
+  const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-';
+  const invNo = invoice.salesInvoiceNo || 'SINV-' + String(invoice._id || invoice.id).padStart(4, '0');
+
+  htmlContent += `
+    <html>
+    <head>
+      <title>Sales Invoice</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: Arial, sans-serif; 
+          font-size: 16px; 
+          padding: 5px;
+          width: 80mm;
+          text-align: center;
+        }
+        h1 { 
+          text-align: center; 
+          margin-bottom: 5px; 
+          font-size: 16px; 
+          font-weight: bold;
+        }
+        .header { margin-bottom: 10px; }
+        p { margin: 2px 0; font-size: 14px; font-weight: bold; }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin-bottom: 10px; 
+        }
+        th, td { 
+          padding: 2px; 
+          text-align: left; 
+          font-size: 12px;
+          font-weight: 700;
+        }
+        th { 
+          background-color: #f2f2f2; 
+          font-weight: bold; 
+        }
+        .total-section { margin-top: 10px; }
+        .footer { margin-top: 10px; font-size: 10px; text-align: center; }
+        @media print {
+          body { padding: 0; }
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Outgoing Sales Invoice</h1>
+      <div class="header">
+        <p>Name: ${partyName}</p>
+        <p>Date: ${invDate}</p>
+        <p>Invoice No: ${invNo}</p>
+      </div>
+  `;
+
+  // Add separator line
+  htmlContent += `<hr style="border: 1px solid #ddd; margin: 5px 0;">`;
+
+  // Table header
+  htmlContent += `
+    <table>
+      <thead>
+        <tr>
+          <th>Sr</th>
+          <th>Pagga</th>
+          <th>Wt(g)</th>
+          <th>Touch</th>
+          <th>Fine(g)</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  const items = invoice.paggaIds || [];
+  let totalWt = 0, totalFine = 0;
+
+  items.forEach((item, i) => {
+    const wt = parseFloat(item.weight) || 0;
+    const touch = parseFloat(item.touch) || 0;
+    const fine = wt * touch / 100;
+    const dec = fine % 1;
+    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.99 ? 0.5 : 1);
+    totalWt += wt;
+    totalFine += roundedFine;
+
+    htmlContent += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${item.paggaNo || '-'}</td>
+        <td>${wt.toFixed(2)}</td>
+        <td>${touch.toFixed(2)}</td>
+        <td>${roundedFine.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  htmlContent += `
+      </tbody>
+    </table>
+  `;
+
+  // Add separator line
+  htmlContent += `<hr style="border: 1px solid #ddd; margin: 5px 0;">`;
+
+  // Total section
+  htmlContent += `
+    <div class="total-section">
+      <p style="font-weight: 500; font-size: 12px;">Gross Wt: ${totalWt.toFixed(2)}g</p>
+      <p>Total Fine: ${totalFine.toFixed(2)}g</p>
+    </div>
+  `;
+
+  // Footer
+  htmlContent += `<hr style="border: 1px solid #ddd; margin: 10px 0;">`;
+  htmlContent += `<div class="footer">Thank you for your business!</div>`;
+
+  htmlContent += `
+    </body>
+    </html>
+  `;
+
+  // Print directly without opening new tab using iframe
+  const printFrame = document.createElement('iframe');
+  printFrame.style.position = 'absolute';
+  printFrame.style.top = '-9999px';
+  printFrame.style.left = '-9999px';
+  document.body.appendChild(printFrame);
+  
+  const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+  printDoc.open();
+  printDoc.write(htmlContent);
+  printDoc.close();
+  
+  printFrame.contentWindow.focus();
+  printFrame.contentWindow.print();
+  
+  setTimeout(() => {
+    document.body.removeChild(printFrame);
+  }, 1000);
+
+  return true;
+}
+
+export async function printInvoiceBluetooth(invoice) {
+  let htmlContent = '';
+  
+  const partyName = invoice.partyId?.partyName || invoice.partyName || '-';
+  const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-';
+  const invNo = invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0');
+
+  htmlContent += `
+    <html>
+    <head>
+      <title>Invoice</title>
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+          font-family: Arial, sans-serif; 
+          font-size: 16px; 
+          padding: 5px;
+          width: 80mm;
+          text-align: center;
+        }
+        h1 { 
+          text-align: center; 
+          margin-bottom: 5px; 
+          font-size: 16px; 
+          font-weight: bold;
+        }
+        .header { margin-bottom: 10px; }
+        p { margin: 2px 0; font-size: 14px; font-weight: bold; }
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          margin-bottom: 10px; 
+        }
+        th, td { 
+          padding: 2px; 
+          text-align: left; 
+          font-size: 12px;
+          font-weight: 700;
+        }
+        th { 
+          background-color: #f2f2f2; 
+          font-weight: bold; 
+        }
+        .total-section { margin-top: 10px; }
+        .footer { margin-top: 10px; font-size: 10px; text-align: center; }
+        @media print {
+          body { padding: 0; }
+          @page {
+            size: 80mm auto;
+            margin: 0;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>BR BULLION - INCOMING INVOICE</h1>
+      <div class="header">
+        <p>Name: ${partyName}</p>
+        <p>Date: ${invDate}</p>
+        <p>Invoice No: ${invNo}</p>
+      </div>
+  `;
+
+  // Add separator line
+  htmlContent += `<hr style="border: 1px solid #ddd; margin: 5px 0;">`;
+
+  // Table header
+  htmlContent += `
+    <table>
+      <thead>
+        <tr>
+          <th>Sr</th>
+          <th>Pagga</th>
+          <th>Wt(g)</th>
+          <th>Touch</th>
+          <th>Fine(g)</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  const items = invoice.items?.filter(i => i.paggaNo || i.weight || i.touch || i.fine) || [];
+  let totalWt = 0, totalFine = 0;
+
+  items.forEach((item, i) => {
+    const wt = parseFloat(item.weight) || 0;
+    const touch = parseFloat(item.touch) || 0;
+    const fine = wt * touch / 100;
+    const dec = fine % 1;
+    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.99 ? 0.5 : 1);
+    totalWt += wt;
+    totalFine += roundedFine;
+
+    htmlContent += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${item.paggaNo || '-'}</td>
+        <td>${wt.toFixed(2)}</td>
+        <td>${touch.toFixed(2)}</td>
+        <td>${roundedFine.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  htmlContent += `
+      </tbody>
+    </table>
+  `;
+
+  // Add separator line
+  htmlContent += `<hr style="border: 1px solid #ddd; margin: 5px 0;">`;
+
+  // Total section
+  htmlContent += `
+    <div class="total-section">
+      <p style="font-weight: 500; font-size: 12px;">Gross Wt: ${totalWt.toFixed(2)}g</p>
+      <p>Total Fine: ${totalFine.toFixed(2)}g</p>
+    </div>
+  `;
+
+  // Footer
+  htmlContent += `<hr style="border: 1px solid #ddd; margin: 10px 0;">`;
+  htmlContent += `<div class="footer">Thank you for your business!</div>`;
 
   htmlContent += `
     </body>

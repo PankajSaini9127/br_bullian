@@ -28,6 +28,7 @@ import {
   Pagination,
   Autocomplete,
   Collapse,
+  Tooltip,
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -36,6 +37,7 @@ import {
   Visibility as VisibilityIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  Download as DownloadIcon,
   KeyboardArrowDown as ExpandMoreIcon,
   KeyboardArrowUp as ExpandLessIcon,
   Bluetooth as BluetoothIcon,
@@ -44,7 +46,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import partyService from '../services/partyService';
 import invoiceService from '../services/invoiceService';
-import { printInvoiceThermal, isBluetoothSupported } from '../utils/thermalPrinter';
+import { printInvoiceThermal, printInvoiceBluetooth, isBluetoothSupported } from '../utils/thermalPrinter';
 import { roundOffFine, roundOffFineFormatted } from '../utils/roundOff';
 
 const Invoice = () => {
@@ -339,8 +341,10 @@ const Invoice = () => {
   };
 
   const handleUpdateInvoice = async () => {
+    const toastId = toast.loading('Updating invoice...');
     try {
       if (!editPartyId) {
+        toast.dismiss(toastId);
         toast.error('Please select a party');
         return;
       }
@@ -366,9 +370,11 @@ const Invoice = () => {
       setInvoices(response?.invoices || response || []);
 
       handleCloseEditModal();
+      toast.dismiss(toastId);
       toast.success('Invoice updated successfully!');
     } catch (error) {
       console.error('Error updating invoice:', error);
+      toast.dismiss(toastId);
       toast.error('Failed to update invoice. Please try again.');
     }
   };
@@ -406,11 +412,13 @@ const Invoice = () => {
   };
 
   const handleSaveInvoice = async () => {
+    const toastId = toast.loading('Saving invoice...');
     try {
       setFormError('');
 
       // Validation: Pagga count must be greater than 0
       if (!paggaCount || paggaCount <= 0) {
+        toast.dismiss(toastId);
         setFormError('Pagga count must be greater than 0');
         return;
       }
@@ -425,14 +433,17 @@ const Invoice = () => {
 
         if (hasAnyValue) {
           if (!hasPaggaNo) {
+            toast.dismiss(toastId);
             setFormError(`Row ${item.id}: Pagga No is required`);
             return;
           }
           if (!hasWeight) {
+            toast.dismiss(toastId);
             setFormError(`Row ${item.id}: Weight is required`);
             return;
           }
           if (!hasTouch) {
+            toast.dismiss(toastId);
             setFormError(`Row ${item.id}: Touch is required`);
             return;
           }
@@ -447,6 +458,7 @@ const Invoice = () => {
       );
 
       if (filledPaggaItems.length === 0) {
+        toast.dismiss(toastId);
         setFormError('Please fill at least one pagga item with Pagga No, Weight, and Touch');
         return;
       }
@@ -483,19 +495,26 @@ const Invoice = () => {
       ]);
       setShowAddForm(false);
       setFormError('');
+      toast.dismiss(toastId);
+      toast.success('Invoice created successfully');
     } catch (error) {
       console.error('Error saving invoice:', error);
       setFormError('Failed to save invoice. Please try again.');
+      toast.dismiss(toastId);
+      toast.error('Failed to save invoice');
     }
   };
 
   const handleBluetoothPrintInvoice = async (invoice) => {
+    const toastId = toast.loading('Printing invoice...');
     try {
-      await printInvoiceThermal(invoice);
-      alert('Print sent to thermal printer');
+      await printInvoiceBluetooth(invoice);
+      toast.dismiss(toastId);
+      toast.success('Print sent to thermal printer');
     } catch (error) {
-      console.error('QZ print failed:', error);
-      alert('Print failed: ' + (error.message || 'QZ Tray not running or printer not connected'));
+      console.error('Print failed:', error);
+      toast.dismiss(toastId);
+      toast.error('Print failed: ' + (error.message || 'Printer not available'));
     }
   };
 
@@ -510,7 +529,7 @@ const Invoice = () => {
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [80, Math.max(requiredHeight, 50)], // 80mm width, dynamic height (min 50mm)
+      format: [80, Math.max(requiredHeight, 50)], // 80mm fixed width, dynamic height (min 50mm)
     });
 
     // Calculate totals first
@@ -762,9 +781,8 @@ const Invoice = () => {
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Gross Weight (g)</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Fine (g)</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>View</TableCell>
-                      <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Edit</TableCell>
-                      <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Print</TableCell>
-                      <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>USB</TableCell>
+                      {/* <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Edit</TableCell> */}
+                      <TableCell sx={{ color: '#fff', fontWeight: 600, width: '100px' }}>Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -804,40 +822,48 @@ const Invoice = () => {
                           }, 0).toFixed(2)} g
                         </TableCell>
                         <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleViewInvoice(invoice)}
-                            sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
-                          >
-                            <VisibilityIcon />
-                          </IconButton>
+                          <Tooltip title="View">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleViewInvoice(invoice)}
+                              sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleEditInvoice(invoice)}
-                            sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </TableCell>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handlePrintInvoice(invoice)}
-                            sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
-                          >
-                            <PrintIcon />
-                          </IconButton>
-                        </TableCell>
-                        <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleBluetoothPrintInvoice(invoice)}
-                            sx={{ color: '#3b82f6', '&:hover': { background: '#dbeafe' } }}
-                          >
-                            <BluetoothIcon fontSize="small" />
-                          </IconButton>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleEditInvoice(invoice)}
+                              sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        {/* </TableCell>
+                        <TableCell> */}
+                          <Tooltip title="Download">
+                            <IconButton
+                              size="small"
+                              onClick={() => handlePrintInvoice(invoice)}
+                              sx={{ color: '#10b981', '&:hover': { background: '#d1fae5' } }}
+                            >
+                              <DownloadIcon />
+                            </IconButton>
+                          </Tooltip>
+                        {/* </TableCell>
+                        <TableCell> */}
+                          <Tooltip title="Print">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleBluetoothPrintInvoice(invoice)}
+                              sx={{ color: '#3b82f6', '&:hover': { background: '#dbeafe' } }}
+                            >
+                              <PrintIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     ))}
