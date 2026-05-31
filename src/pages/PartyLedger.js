@@ -1,0 +1,388 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Container,
+  Paper,
+  Typography,
+  Box,
+  Grid,
+  TextField,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Autocomplete,
+  Chip,
+  Collapse,
+  IconButton,
+  Card,
+  CardContent,
+} from '@mui/material';
+import {
+  KeyboardArrowDown as ExpandMoreIcon,
+  KeyboardArrowUp as ExpandLessIcon,
+  Print as PrintIcon,
+} from '@mui/icons-material';
+import partyService from '../services/partyService';
+import { printPartyLedger } from '../utils/thermalPrinter';
+
+const PartyLedger = () => {
+  const [selectedParty, setSelectedParty] = useState(null);
+  const [parties, setParties] = useState([]);
+  const [partySearchQuery, setPartySearchQuery] = useState('');
+  const [partySearchResults, setPartySearchResults] = useState([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [ledgerData, setLedgerData] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
+
+  useEffect(() => {
+    const fetchParties = async () => {
+      try {
+        const response = await partyService.getParties();
+        if (response && response.parties) {
+          setParties(response.parties);
+        }
+      } catch (error) {
+        console.error('Error fetching parties:', error);
+      }
+    };
+
+    fetchParties();
+  }, []);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(async () => {
+      if (partySearchQuery) {
+        try {
+          const response = await partyService.searchParties(partySearchQuery);
+          const result = response?.data || response;
+          setPartySearchResults(result?.parties || result || []);
+        } catch (error) {
+          console.error('Error searching parties:', error);
+        }
+      } else {
+        setPartySearchResults(parties);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [partySearchQuery, parties]);
+
+  const handleFetchLedger = async () => {
+    if (!selectedParty) return;
+    try {
+      const response = await partyService.getPartyLedger(selectedParty._id, startDate, endDate);
+      const data = response?.data || response;
+
+      console.log(data)
+      setLedgerData(data);
+    } catch (error) {
+      console.error('Error fetching ledger:', error);
+    }
+  };
+
+  const toggleRow = (index) => {
+    setExpandedRows(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    return new Date(dateStr).toLocaleDateString('en-GB');
+  };
+
+  const entries = ledgerData?.entries || [];
+  const summary = ledgerData?.summary || {};
+  const party = ledgerData?.party || {};
+  const pendingSaudas = ledgerData?.pendingSaudas || [];
+
+  const handlePrint = async () => {
+    try {
+      await printPartyLedger(party, entries, summary, pendingSaudas, startDate, endDate);
+    } catch (error) {
+      console.error('Print failed:', error);
+    }
+  };
+
+  let totalDebit = 0;
+  let totalCredit = 0;
+
+  const getDebitAmount = (entry) => {
+    if (entry.type === 'payment') {
+      return entry.paymentType === 'incoming' ? (entry.amount || 0) : 0;
+    }
+    if (entry.type === 'incoming') {
+      return entry.saudaCuts?.reduce((s, c) => s + (c.cutFine * c.rate / 1000), 0) || 0;
+    }
+    return 0;
+  };
+
+  const getCreditAmount = (entry) => {
+    if (entry.type === 'payment') {
+      return entry.paymentType === 'outgoing' ? (entry.amount || 0) : 0;
+    }
+    if (entry.type === 'sales') {
+      return entry.amount || entry.totalFine || 0;
+    }
+    return 0;
+  };
+
+  return (
+    <Container maxWidth="xl" sx={{ py: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, color: '#6366f1' }}>
+          Party Ledger
+        </Typography>
+
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={4}>
+            <Autocomplete
+              fullWidth
+              options={partySearchQuery ? partySearchResults : parties}
+              getOptionLabel={(option) => option.partyName || ''}
+              value={selectedParty}
+              onChange={(event, newValue) => {
+                setSelectedParty(newValue);
+              }}
+              onInputChange={(event, newInputValue) => {
+                setPartySearchQuery(newInputValue);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Select Party"
+                  variant="outlined"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              label="Start Date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              fullWidth
+              label="End Date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleFetchLedger}
+              disabled={!selectedParty}
+              sx={{
+                height: '56px',
+                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              }}
+            >
+              Fetch
+            </Button>
+          </Grid>
+          {ledgerData && (
+            <Grid item xs={12} md={1}>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={handlePrint}
+                sx={{
+                  height: '56px',
+                  background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+                }}
+              >
+                <PrintIcon />
+              </Button>
+            </Grid>
+          )}
+        </Grid>
+
+        {ledgerData && entries.length > 0 && (
+          <TableContainer component={Paper} elevation={1}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Description</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Fine (g)</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Debit</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Credit</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Balance</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600, width: 50 }}></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                  {entries.map((entry, idx) => (
+                    <React.Fragment key={idx}>
+                      <TableRow key={idx}>
+                      <TableCell>{formatDate(entry.date)}</TableCell>
+                      <TableCell>
+                        <Chip label={entry.type} size="small" color={entry.type === 'incoming' ? 'primary' : entry.type === 'payment' ? 'success' : 'secondary'} sx={{ mr: 1 }} />
+                        {entry.type === 'payment' ? entry.paymentNo : entry.invoiceNo}
+                      </TableCell>
+                      <TableCell>{entry.type === 'payment' ? '-' : (entry.totalFine?.toFixed(2) + ' g')}</TableCell>
+                      <TableCell>
+                        {entry.type === 'payment' 
+                          ? (entry.paymentType === 'incoming' ? (entry.amount || 0).toFixed(2) : '-')
+                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + (c.cutFine * c.rate / 1000), 0) || 0).toFixed(2) : '-')
+                        }
+                      </TableCell>
+                      <TableCell>
+                        {entry.type === 'payment' 
+                          ? (entry.paymentType === 'outgoing' ? (entry.amount || 0).toFixed(2) : '-')
+                          : (entry.type === 'sales' ? (entry.amount || entry.totalFine || 0).toFixed(2) : '-')
+                        }
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        {(() => {
+                          const debit = getDebitAmount(entry);
+                          const credit = getCreditAmount(entry);
+                          totalDebit += debit;
+                          totalCredit += credit;
+                          return (totalDebit - totalCredit).toFixed(2);
+                        })()}
+                      </TableCell>
+                      <TableCell>
+                        {entry.saudaCuts?.length > 0 && (
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleRow(idx); }}>
+                            {expandedRows[idx] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                          </IconButton>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                    {entry.saudaCuts?.length > 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
+                          <Collapse in={expandedRows[idx]}>
+                            <Box sx={{ p: 2, background: '#f8fafc' }}>
+                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Sauda Cuts</Typography>
+                              <Table size="small">
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell>Sauda No</TableCell>
+                                    <TableCell>Date</TableCell>
+                                    <TableCell>Booking Qty</TableCell>
+                                    <TableCell>Delivered</TableCell>
+                                    <TableCell>Rate</TableCell>
+                                    <TableCell>Remaining Fine</TableCell>
+                                    <TableCell>Balance</TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  {entry.saudaCuts.map((cut, i) => {
+                                    const remainingFine = cut.quantity - (cut.delivered || 0);
+                                    return (
+                                      <TableRow key={i}>
+                                        <TableCell>{cut.saudaNo}</TableCell>
+                                        <TableCell>{formatDate(cut.saudaDate)}</TableCell>
+                                        <TableCell>{cut.quantity}</TableCell>
+                                        <TableCell>{cut.delivered?.toFixed(2)}</TableCell>
+                                        <TableCell>{cut.rate}</TableCell>
+                                        <TableCell>{remainingFine.toFixed(2)}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>{(cut.cutFine * (cut.rate / 1000)).toFixed(2)}</TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </Box>
+                          </Collapse>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </React.Fragment>
+                  ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          )}
+
+          {ledgerData && pendingSaudas.length > 0 && (
+            <Box sx={{ mt: 4 }}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#6366f1' }}>
+                Pending Saudas
+              </Typography>
+              <TableContainer component={Paper} elevation={1}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' }}>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda No</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Quantity</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Delivered</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Rate</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pending Qty</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pendingSaudas.map((sauda, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{sauda.saudaNo}</TableCell>
+                        <TableCell>{formatDate(sauda.saudaDate)}</TableCell>
+                        <TableCell>{sauda.quantity}</TableCell>
+                        <TableCell>{sauda.delivered?.toFixed(2)}</TableCell>
+                        <TableCell>{sauda.rate}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{sauda.pendingQty?.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {ledgerData && (
+            <Box sx={{ mt: 4, p: 3, background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: 2 }}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#6366f1' }}>
+                Closing Balance
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={12}>
+                  <Typography variant="body2" sx={{ color: '#64748b' }}>Balance</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: (totalDebit - totalCredit) < 0 ? '#ef4444' : '#10b981' }}>{(totalDebit - totalCredit).toFixed(2)}</Typography>
+                </Grid>
+              </Grid>
+            </Box>
+          )}
+
+          {selectedParty && !ledgerData && (
+          <Box sx={{ mt: 4, textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ color: '#64748b' }}>
+              Select date range and click Fetch to view ledger
+            </Typography>
+          </Box>
+        )}
+      </Paper>
+    </Container>
+  );
+};
+
+export default PartyLedger;
+
+const printStyle = document.createElement('style');
+printStyle.textContent = `
+  @media print {
+    @page { size: A4; margin: 10mm; }
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .no-print, button, .MuiButton-root, .MuiIconButton-root, .MuiAutocomplete-root, .MuiTextField-root { display: none !important; }
+    .MuiContainer-root { max-width: 100% !important; padding: 0 !important; }
+    table { font-size: 12pt !important; width: 100% !important; }
+    th { font-size: 13pt !important; padding: 4px !important; }
+    td { font-size: 12pt !important; padding: 4px !important; }
+    h1, h2, h3, h4, h5, h6 { font-size: 14pt !important; }
+    p, span, div { font-size: 12pt !important; }
+  }
+`;
+document.head.appendChild(printStyle);
