@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Container,
   Typography,
@@ -24,6 +26,7 @@ import {
   TextField,
   Box,
   Autocomplete,
+  Stack,
 } from '@mui/material';
 import {
   ArrowUpward as IncomingIcon,
@@ -31,6 +34,7 @@ import {
   Add as AddIcon,
   Delete as DeleteIcon,
   Visibility as ViewIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 import caseService from '../services/caseService';
 import partyService from '../services/partyService';
@@ -44,8 +48,13 @@ const Case = () => {
   
   // Modal state
   const [openModal, setOpenModal] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [editingCaseId, setEditingCaseId] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletingCaseId, setDeletingCaseId] = useState(null);
   const [partyId, setPartyId] = useState('');
   const [partyName, setPartyName] = useState('');
+  const [selectedParty, setSelectedParty] = useState(null);
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [partySearchResults, setPartySearchResults] = useState([]);
   const [parties, setParties] = useState([]);
@@ -111,14 +120,35 @@ const Case = () => {
 
   const handleCloseModal = () => {
     setOpenModal(false);
+    setIsEdit(false);
+    setEditingCaseId(null);
     setPartyId('');
     setPartyName('');
+    setSelectedParty(null);
     setAmount('');
     setRemark('');
     setPaymentDate('');
   };
 
+  const handleAmountChange = (value) => {
+    // Remove commas for storage
+    const cleanValue = value.replace(/,/g, '');
+    setAmount(cleanValue);
+  };
+
+  const formatAmount = (value) => {
+    if (!value) return '';
+    const numStr = value.toString();
+    let lastThree = numStr.substring(numStr.length - 3);
+    let otherNumbers = numStr.substring(0, numStr.length - 3);
+    if (otherNumbers !== '') {
+      lastThree = ',' + lastThree;
+    }
+    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+  };
+
   const handleSaveCase = async () => {
+    const toastId = toast.loading(isEdit ? 'Updating payment...' : 'Creating payment...');
     try {
       const paymentData = {
         paymentType,
@@ -127,20 +157,53 @@ const Case = () => {
         remark,
         partyId,
       };
-      await caseService.createPayment(paymentData);
+      if (isEdit) {
+        await caseService.updatePayment(editingCaseId, paymentData);
+      } else {
+        await caseService.createPayment(paymentData);
+      }
       handleCloseModal();
       fetchCases();
+      toast.dismiss(toastId);
+      toast.success(isEdit ? 'Payment updated successfully' : 'Payment created successfully');
     } catch (error) {
-      console.error('Error creating payment:', error);
+      console.error('Error saving payment:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to save payment');
     }
   };
 
+  const handleEditCase = (caseItem) => {
+    setIsEdit(true);
+    setEditingCaseId(caseItem._id);
+    setPartyId(caseItem.partyId?._id || caseItem.partyId);
+    setPartyName(caseItem.partyId?.partyName || '');
+    setSelectedParty(caseItem.partyId);
+    setAmount(caseItem.amount?.toString() || '');
+    setRemark(caseItem.remark || '');
+    setPaymentDate(caseItem.paymentDate?.split('T')[0] || '');
+    setPaymentType(caseItem.paymentType);
+    setOpenModal(true);
+  };
+
   const handleDeleteCase = async (id) => {
+    setDeletingCaseId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    const toastId = toast.loading('Deleting payment...');
     try {
-      await caseService.deletePayment(id);
+      await caseService.deletePayment(deletingCaseId);
+      setDeleteConfirmOpen(false);
+      setDeletingCaseId(null);
       fetchCases();
+      toast.dismiss(toastId);
+      toast.success('Payment deleted successfully');
     } catch (error) {
       console.error('Error deleting payment:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to delete payment');
     }
   };
 
@@ -220,6 +283,13 @@ const Case = () => {
                       <TableCell>
                         <IconButton
                           size="small"
+                          onClick={() => handleEditCase(caseItem)}
+                          sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          size="small"
                           onClick={() => handleDeleteCase(caseItem._id)}
                           sx={{ color: '#ef4444', '&:hover': { background: '#fee2e2' } }}
                         >
@@ -236,59 +306,59 @@ const Case = () => {
       </Card>
 
       {/* Add Case Modal */}
-      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="md" fullWidth>
+      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="md">
         <DialogTitle>
-          Add {paymentType === 'incoming' ? 'Incoming' : 'Outgoing'} Case
+          {isEdit ? 'Edit' : 'Add'} {paymentType === 'incoming' ? 'Incoming' : 'Outgoing'} Case
         </DialogTitle>
         <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12}>
-              <Autocomplete
-                fullWidth
-                size="small"
-                options={partySearchQuery ? partySearchResults : parties}
-                getOptionLabel={(option) => option.partyName || ''}
-                value={parties.find((p) => p._id === partyId) || null}
-                onChange={(e, newValue) => {
-                  setPartyId(newValue?._id || '');
-                  setPartyName(newValue?.partyName || '');
-                }}
-                onInputChange={(event, newInputValue) => {
-                  setPartySearchQuery(newInputValue);
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Party"
-                    required
-                    InputLabelProps={{ shrink: true }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#818cf8',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#6366f1',
-                          borderWidth: 2,
-                        },
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Autocomplete
+              fullWidth
+              size="small"
+              options={partySearchQuery ? partySearchResults : parties}
+              getOptionLabel={(option) => option.partyName || ''}
+              value={selectedParty}
+              onChange={(e, newValue) => {
+                setPartyId(newValue?._id || '');
+                setPartyName(newValue?.partyName || '');
+                setSelectedParty(newValue);
+              }}
+              onInputChange={(event, newInputValue) => {
+                setPartySearchQuery(newInputValue);
+              }}
+              onBlur={() => {
+                setPartySearchQuery('');
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Party"
+                  required
+                  InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': {
+                        borderColor: '#818cf8',
                       },
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-            <Grid item xs={6}>
+                      '&.Mui-focused fieldset': {
+                        borderColor: '#6366f1',
+                        borderWidth: 2,
+                      },
+                    },
+                  }}
+                />
+              )}
+            />
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 fullWidth
                 label="Amount (₹)"
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                type="text"
+                value={formatAmount(amount)}
+                onChange={(e) => handleAmountChange(e.target.value)}
                 required
                 size="small"
               />
-            </Grid>
-            <Grid item xs={6}>
               <TextField
                 fullWidth
                 label="Payment Date"
@@ -299,19 +369,17 @@ const Case = () => {
                 size="small"
                 InputLabelProps={{ shrink: true }}
               />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Remark"
-                value={remark}
-                onChange={(e) => setRemark(e.target.value)}
-                size="small"
-                multiline
-                rows={2}
-              />
-            </Grid>
-          </Grid>
+            </Stack>
+            <TextField
+              fullWidth
+              label="Remark"
+              value={remark}
+              onChange={(e) => setRemark(e.target.value)}
+              size="small"
+              multiline
+              rows={2}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleCloseModal} sx={{ color: '#6366f1' }}>
@@ -326,7 +394,30 @@ const Case = () => {
               fontWeight: 600,
             }}
           >
-            Save Case
+            {isEdit ? 'Update' : 'Add'} Case
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onClose={() => setDeleteConfirmOpen(false)}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete this payment?
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={() => setDeleteConfirmOpen(false)} sx={{ color: '#6366f1' }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleConfirmDelete}
+            sx={{
+              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              fontWeight: 600,
+            }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

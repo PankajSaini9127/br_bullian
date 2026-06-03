@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Container,
   Paper,
@@ -18,6 +20,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Stack,
+  Pagination,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,45 +45,54 @@ const PartyList = () => {
   });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [partyToDelete, setPartyToDelete] = useState(null);
+  const [formError, setFormError] = useState({});
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
+  const fetchParties = async () => {
+    try {
+      const params = { page, limit };
+      if (searchTerm) {
+        params.search = searchTerm;
+      }
+      const response = await partyService.getParties(params);
+
+      if(response && response.parties) {
+        setParties(response.parties || []);
+        setTotalPages(response.pagination?.totalPages || 1);
+      }
+    } catch (error) {
+      console.error('Error fetching parties:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchParties = async () => {
-      try {
-        const parties = await partyService.getParties();
-
-        if(parties && parties.parties) {
-          setParties(parties.parties || []);
-        }
-      } catch (error) {
-        console.error('Error fetching parties:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchParties();
-  }, []);
+  }, [page, limit, searchTerm]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
+    setPage(1);
   };
 
-  const filteredParties = parties.filter(
-    (party) =>
-      party.partyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      party.contactNo?.includes(searchTerm)
-  );
+  const handlePageChange = (event, value) => {
+    setPage(value);
+  };
 
   const handleAddParty = () => {
     setEditingParty(null);
     setFormData({ partyName: '', contactNo: '', email: '', type: 'Customer' });
+    setFormError({});
     setOpenDialog(true);
   };
 
   const handleEditParty = (party) => {
     setEditingParty(party);
     setFormData(party);
+    setFormError({});
     setOpenDialog(true);
   };
 
@@ -89,13 +102,18 @@ const PartyList = () => {
   };
 
   const confirmDeleteParty = async () => {
+    const toastId = toast.loading('Deleting party...');
     try {
       await partyService.deletePartyDetails(partyToDelete._id);
-      setParties(parties.filter((party) => party._id !== partyToDelete._id));
       setDeleteConfirmOpen(false);
       setPartyToDelete(null);
+      fetchParties();
+      toast.dismiss(toastId);
+      toast.success('Party deleted successfully');
     } catch (error) {
       console.error('Delete Party Error:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to delete party');
     }
   };
 
@@ -105,6 +123,23 @@ const PartyList = () => {
   };
 
   const handleSaveParty = async () => {
+    const errors = {};
+    if (!formData.partyName.trim()) {
+      errors.partyName = 'Party name is required';
+    }
+    if (!formData.contactNo.trim()) {
+      errors.contactNo = 'Contact number is required';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFormError(errors);
+      return;
+    }
+    
+    setFormError({});
+    
+    const toastId = toast.loading(editingParty ? 'Updating party...' : 'Creating party...');
+    
     try {
       if (editingParty) {
         // Update Party API Call
@@ -113,31 +148,20 @@ const PartyList = () => {
           _id: editingParty._id
         };
         await partyService.updatePartyDetails(editingParty._id, updatedParty);
-
-        setParties(
-          parties.map((party) =>
-            party._id === editingParty._id ? updatedParty : party
-          )
-        );
       } else {
         // Save Party API Call
-
-        const response = await partyService.addPartyDetails(formData);
-
-        // Add New Party In State
-        setParties([
-          ...parties,
-          response.data || {
-            ...formData,
-            _id: parties.length + 1
-          }
-        ]);
+        await partyService.addPartyDetails(formData);
       }
 
       setOpenDialog(false);
+      fetchParties();
+      toast.dismiss(toastId);
+      toast.success(editingParty ? 'Party updated successfully' : 'Party created successfully');
 
     } catch (error) {
       console.error('Save Party Error:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to save party');
     }
   };
 
@@ -224,7 +248,7 @@ const PartyList = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredParties.map((party, index) => (
+              {parties.map((party, index) => (
                 <TableRow
                   key={party._id || party.id}
                   sx={{
@@ -269,41 +293,57 @@ const PartyList = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={handlePageChange}
+            color="primary"
+            sx={{
+              '& .MuiPaginationItem-root': {
+                fontWeight: 600,
+              },
+            }}
+          />
+        </Box>
       </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', color: '#fff' }}>
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md">
+        <DialogTitle>
           {editingParty ? 'Edit Party' : 'Add New Party'}
         </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Party Name"
-            fullWidth
-            variant="outlined"
-            value={formData.partyName}
-            onChange={(e) => setFormData({ ...formData, partyName: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Contact No"
-            fullWidth
-            variant="outlined"
-            value={formData.contactNo}
-            onChange={(e) => setFormData({ ...formData, contactNo: e.target.value })}
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            margin="dense"
-            label="Email"
-            fullWidth
-            variant="outlined"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            sx={{ mb: 2 }}
-          />
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              label="Party Name"
+              size="small"
+              value={formData.partyName}
+              onChange={(e) => setFormData({ ...formData, partyName: e.target.value })}
+              error={!!formError.partyName}
+              helperText={formError.partyName}
+              required
+            />
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                label="Contact No"
+                size="small"
+                value={formData.contactNo}
+                onChange={(e) => setFormData({ ...formData, contactNo: e.target.value })}
+                error={!!formError.contactNo}
+                helperText={formError.contactNo}
+                required
+              />
+              <TextField
+                fullWidth
+                label="Email"
+                size="small"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </Stack>
+          </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button onClick={handleCloseDialog} sx={{ color: '#6366f1' }}>
@@ -324,16 +364,11 @@ const PartyList = () => {
         </DialogActions>
       </Dialog>
 
-      <Dialog open={deleteConfirmOpen} onClose={cancelDeleteParty} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff' }}>
-          Confirm Delete
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
+      <Dialog open={deleteConfirmOpen} onClose={cancelDeleteParty}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
           <Typography variant="body1">
             Are you sure you want to delete <strong>{partyToDelete?.partyName}</strong>?
-          </Typography>
-          <Typography variant="body2" sx={{ color: '#6b7280', mt: 1 }}>
-            This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
@@ -345,9 +380,6 @@ const PartyList = () => {
             variant="contained"
             sx={{
               background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-              },
             }}
           >
             Delete

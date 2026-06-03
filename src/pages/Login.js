@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Container,
   Paper,
@@ -78,12 +80,17 @@ const Login = () => {
       password: formData.password,
     };
 
+    const toastId = toast.loading('Logging in...');
     const result = await login(userData);
     setLoading(false);
 
     if (result.success) {
+      toast.dismiss(toastId);
+      toast.success('Login successful');
       navigate('/dashboard');
     } else {
+      toast.dismiss(toastId);
+      toast.error('Login failed');
       setError(result.error || 'Login failed. Please try again.');
     }
   };

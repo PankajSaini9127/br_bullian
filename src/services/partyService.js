@@ -66,9 +66,9 @@ async function deletePartyDetails(id) {
   }
 }
 
-async function getParties() {
+async function getParties(params = {}) {
   try {
-    const response = await apiInstance.get('/parties');
+    const response = await apiInstance.get('/parties', { params });
     console.log('Parties Retrieved:', response.data);
     return response?.data?.data || {};
   } catch (error) {
@@ -103,11 +103,23 @@ async function getPartyLedger(partyId, startDate, endDate) {
   }
 }
 
+async function getPartySaudaSummary(partyId) {
+  try {
+    const response = await apiInstance.get(`/sauda/party/${partyId}/summary`);
+    console.log('Party Sauda Summary:', response.data);
+    return response?.data || {};
+  } catch (error) {
+    console.error('Error fetching party sauda summary:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 export default {
   addPartyDetails,
   updatePartyDetails,
   deletePartyDetails,
   getParties,
   searchParties,
-  getPartyLedger
+  getPartyLedger,
+  getPartySaudaSummary
 };

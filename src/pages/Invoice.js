@@ -29,6 +29,7 @@ import {
   Autocomplete,
   Collapse,
   Tooltip,
+  Stack,
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -53,6 +54,11 @@ const Invoice = () => {
   const [invoices, setInvoices] = useState([]);
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [selectedPartyName, setSelectedPartyName] = useState('');
+  const [partySaudaSummary, setPartySaudaSummary] = useState(null);
+  const [excessFineModalOpen, setExcessFineModalOpen] = useState(false);
+  const [excessWeight, setExcessWeight] = useState('');
+  const [excessRate, setExcessRate] = useState('');
+  const [excessFine, setExcessFine] = useState(0);
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [partySearchResults, setPartySearchResults] = useState([]);
   const today = new Date().toISOString().split('T')[0];
@@ -76,6 +82,7 @@ const Invoice = () => {
   const [editItems, setEditItems] = useState([]);
   const [editPartyId, setEditPartyId] = useState('');
   const [editInvoiceDate, setEditInvoiceDate] = useState('');
+  const [editInvoiceNo, setEditInvoiceNo] = useState('');
   const [editCurrentPagga, setEditCurrentPagga] = useState([]);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
@@ -242,6 +249,7 @@ const Invoice = () => {
     setEditingInvoice(invoice);
     setEditPartyId(invoice.partyId?._id || invoice.partyId);
     setEditInvoiceDate(invoice.invoiceDate);
+    setEditInvoiceNo(invoice.invoiceNo || '');
 
     // Set current pagga from the invoice
     setEditCurrentPagga(invoice.items || []);
@@ -352,6 +360,7 @@ const Invoice = () => {
       const invoiceData = {
         partyId: editPartyId,
         invoiceDate: editInvoiceDate,
+        invoiceNo: editInvoiceNo,
         paggaItems: editCurrentPagga,
       };
 
@@ -391,6 +400,110 @@ const Invoice = () => {
     const newId = items.length + 1;
     setItems([...items, { id: newId, paggaNo: '', weight: '', touch: '', fine: '' }]);
     setPaggaCount(paggaCount + 1);
+  };
+
+  const fetchPartySaudaSummary = async (partyId) => {
+    try {
+      const response = await partyService.getPartySaudaSummary(partyId);
+      console.log('Party Sauda Summary Response:', response);
+      setPartySaudaSummary(response?.data || {});
+    } catch (error) {
+      console.error('Error fetching party sauda summary:', error);
+      setPartySaudaSummary({});
+    }
+  };
+
+  const handleExcessFineSubmit = async () => {
+    const toastId = toast.loading('Saving invoice...');
+    try {
+      setFormError('');
+
+      if (!excessWeight || !excessRate) {
+        toast.dismiss(toastId);
+        setFormError('Please fill weight and rate');
+        return;
+      }
+
+      // Filter out empty pagga items
+      const filledPaggaItems = items.filter(item =>
+        item.paggaNo && item.paggaNo.trim() !== '' &&
+        item.weight && item.weight.trim() !== '' &&
+        item.touch && item.touch.trim() !== ''
+      );
+
+      const invoiceData = {
+        partyId: selectedPartyId,
+        invoiceDate: invoiceDate,
+        paggaItems: filledPaggaItems,
+        bhavcut: {
+          weight: excessWeight,
+          rate: excessRate,
+          amount: excessFine
+        }
+      };
+
+      await invoiceService.createInvoice(invoiceData);
+
+      // Refresh invoice list from API
+      const response = await invoiceService.getInvoices();
+      let invoiceList = [];
+      if (Array.isArray(response)) {
+        invoiceList = response;
+      } else if (response && Array.isArray(response.invoices)) {
+        invoiceList = response.invoices;
+      } else if (response && Array.isArray(response.data)) {
+        invoiceList = response.data;
+      }
+      setInvoices(invoiceList);
+
+      setSelectedPartyId('');
+      setSelectedPartyName('');
+      setInvoiceDate(today);
+      setPaggaCount(4);
+      setItems([
+        { id: 1, paggaNo: '', weight: '', touch: '', fine: '' },
+        { id: 2, paggaNo: '', weight: '', touch: '', fine: '' },
+        { id: 3, paggaNo: '', weight: '', touch: '', fine: '' },
+        { id: 4, paggaNo: '', weight: '', touch: '', fine: '' },
+      ]);
+      setShowAddForm(false);
+      setFormError('');
+      setExcessFineModalOpen(false);
+      setExcessWeight('');
+      setExcessRate('');
+      setExcessFine(0);
+      toast.dismiss(toastId);
+      toast.success('Invoice created successfully');
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+      setFormError('Failed to save invoice. Please try again.');
+      toast.dismiss(toastId);
+      toast.error('Failed to save invoice');
+    }
+  };
+
+  const handleExcessRateChange = (value) => {
+    // Remove commas for storage
+    const cleanValue = value.replace(/,/g, '');
+    setExcessRate(cleanValue);
+  };
+
+  const formatRate = (value) => {
+    if (!value) return '';
+    const numStr = value.toString();
+    let lastThree = numStr.substring(numStr.length - 3);
+    let otherNumbers = numStr.substring(0, numStr.length - 3);
+    if (otherNumbers !== '') {
+      lastThree = ',' + lastThree;
+    }
+    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+  };
+
+  const handleCloseExcessFineModal = () => {
+    setExcessFineModalOpen(false);
+    setExcessWeight('');
+    setExcessRate('');
+    setExcessFine(0);
   };
 
   const handleViewInvoice = (invoice) => {
@@ -460,6 +573,25 @@ const Invoice = () => {
       if (filledPaggaItems.length === 0) {
         toast.dismiss(toastId);
         setFormError('Please fill at least one pagga item with Pagga No, Weight, and Touch');
+        return;
+      }
+
+      // Calculate total fine from items
+      const totalFine = items.reduce((total, item) => {
+        const weight = parseFloat(item.weight) || 0;
+        const touch = parseFloat(item.touch) || 0;
+        const fine = weight * touch / 100;
+        return total + roundOffFine(fine);
+      }, 0);
+
+      // Check if invoice fine exceeds remaining purchase fine
+      const remainingPurchaseFine = partySaudaSummary?.purchase?.remaining || 0;
+      if (totalFine > remainingPurchaseFine) {
+        toast.dismiss(toastId);
+        const excess = totalFine - remainingPurchaseFine;
+        setExcessFine(excess);
+        setExcessWeight(excess.toFixed(2));
+        setExcessFineModalOpen(true);
         return;
       }
 
@@ -612,9 +744,8 @@ const Invoice = () => {
     doc.setFont('helvetica', 'normal');
     doc.text('Thank you for your business!', 40, yPosition + 22, { align: 'center' });
     
-    // Save and print
+    // Save PDF
     doc.save(`invoice-${invoice?.invoiceNo || 'unknown'}.pdf`);
-    doc.autoPrint();
   };
 
   return (
@@ -844,7 +975,7 @@ const Invoice = () => {
                           </Tooltip>
                         {/* </TableCell>
                         <TableCell> */}
-                          <Tooltip title="Download">
+                          <Tooltip title="Download PDF">
                             <IconButton
                               size="small"
                               onClick={() => handlePrintInvoice(invoice)}
@@ -950,6 +1081,11 @@ const Invoice = () => {
                     setSelectedPartyId(newValue?._id || '');
                     setSelectedPartyName(newValue?.partyName || '');
                     setFormError('');
+                    if (newValue?._id) {
+                      fetchPartySaudaSummary(newValue._id);
+                    } else {
+                      setPartySaudaSummary(null);
+                    }
                   }}
                   onInputChange={(event, newInputValue) => {
                     setPartySearchQuery(newInputValue);
@@ -1027,6 +1163,30 @@ const Invoice = () => {
                   }}
                 />
               </Grid>
+              {partySaudaSummary && (
+                <Grid item xs={12}>
+                  <Stack spacing={2} sx={{ mt: 2 }}>
+                    <Box sx={{ 
+                      p: 2, 
+                      background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                      border: '1px solid #bbf7d0',
+                      borderRadius: 2 
+                    }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#166534' }}>
+                        Sauda Summary
+                      </Typography>
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                        {/* <Typography variant="body2" sx={{ color: '#64748b' }}>
+                          Remaining Sales Fine: <strong>{partySaudaSummary.sales?.remaining || 0}g</strong>
+                        </Typography> */}
+                        <Typography variant="body2" sx={{ color: '#64748b' }}>
+                          Remaining Purchase Fine: <strong>{partySaudaSummary.purchase?.remaining || 0}g</strong>
+                        </Typography>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                </Grid>
+              )}
             </Grid>
           </Paper>
 
@@ -1384,66 +1544,46 @@ const Invoice = () => {
 
       {/* Edit Invoice Modal */}
       <Dialog open={editModalOpen} onClose={handleCloseEditModal} maxWidth="lg" fullWidth>
-        <DialogTitle
-          sx={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-            color: '#fff',
-            fontWeight: 600,
-          }}
-        >
-          Edit Invoice
-        </DialogTitle>
-        <DialogContent sx={{ pt: 3 }}>
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Party Name</InputLabel>
-                <Select
-                  value={editPartyId}
+        <DialogTitle>Edit Invoice</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Autocomplete
+              fullWidth
+              size="small"
+              options={parties}
+              getOptionLabel={(option) => option.partyName || ''}
+              value={parties.find((p) => p._id === editPartyId) || null}
+              onChange={(e, newValue) => {
+                setEditPartyId(newValue?._id || '');
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
                   label="Party Name"
-                  onChange={(e) => setEditPartyId(e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      '&:hover fieldset': {
-                        borderColor: '#818cf8',
-                      },
-                      '&.Mui-focused fieldset': {
-                        borderColor: '#6366f1',
-                        borderWidth: 2,
-                      },
-                    },
-                  }}
-                >
-                  {parties.map((party) => (
-                    <MenuItem key={party._id} value={party._id}>
-                      {party.partyName}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6}>
+                  required
+                  InputLabelProps={{ shrink: true }}
+                />
+              )}
+            />
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
               <TextField
                 fullWidth
                 label="Invoice Date"
                 type="date"
                 value={editInvoiceDate}
                 onChange={(e) => setEditInvoiceDate(e.target.value)}
+                size="small"
                 InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    '&:hover fieldset': {
-                      borderColor: '#818cf8',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#6366f1',
-                      borderWidth: 2,
-                    },
-                  },
-                }}
               />
-            </Grid>
-          </Grid>
+              <TextField
+                fullWidth
+                label="Invoice No"
+                value={editInvoiceNo}
+                onChange={(e) => setEditInvoiceNo(e.target.value)}
+                size="small"
+              />
+            </Stack>
+          </Stack>
 
           <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
             Pagga Details
@@ -1497,17 +1637,6 @@ const Invoice = () => {
                         value={item.paggaNo}
                         onChange={(e) => handleEditPaggaChange(index, 'paggaNo', e.target.value)}
                         placeholder="Enter Pagga No"
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            '&:hover fieldset': {
-                              borderColor: '#818cf8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#6366f1',
-                              borderWidth: 2,
-                            },
-                          },
-                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -1519,17 +1648,6 @@ const Invoice = () => {
                         onChange={(e) => handleEditPaggaChange(index, 'weight', e.target.value)}
                         placeholder="0.00"
                         inputProps={{ inputMode: 'decimal', pattern: '[0-9.]*', step: '0.01' }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            '&:hover fieldset': {
-                              borderColor: '#818cf8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#6366f1',
-                              borderWidth: 2,
-                            },
-                          },
-                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -1541,17 +1659,6 @@ const Invoice = () => {
                         onChange={(e) => handleEditPaggaChange(index, 'touch', e.target.value)}
                         placeholder="00.00"
                         inputProps={{ maxLength: 5 }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            '&:hover fieldset': {
-                              borderColor: '#818cf8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#6366f1',
-                              borderWidth: 2,
-                            },
-                          },
-                        }}
                       />
                     </TableCell>
                     <TableCell>
@@ -1562,18 +1669,6 @@ const Invoice = () => {
                         value={item.fine}
                         InputProps={{
                           readOnly: true,
-                        }}
-                        sx={{
-                          bgcolor: '#f8fafc',
-                          '& .MuiOutlinedInput-root': {
-                            '&:hover fieldset': {
-                              borderColor: '#818cf8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#6366f1',
-                              borderWidth: 2,
-                            },
-                          },
                         }}
                       />
                     </TableCell>
@@ -1616,6 +1711,51 @@ const Invoice = () => {
             }}
           >
             Update Invoice
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Excess Fine Modal */}
+      <Dialog open={excessFineModalOpen} onClose={handleCloseExcessFineModal} maxWidth="sm" fullWidth>
+        <DialogTitle>Bhav Cuts</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ color: '#dc2626' }}>
+              Invoice fine exceeds remaining purchase fine by <strong>{excessFine.toFixed(2)}g</strong>
+            </Typography>
+            <TextField
+              fullWidth
+              label="Weight (g)"
+              type="number"
+              value={excessWeight}
+              disabled
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="Rate"
+              type="text"
+              value={formatRate(excessRate)}
+              onChange={(e) => handleExcessRateChange(e.target.value)}
+              size="small"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseExcessFineModal} sx={{ color: '#6366f1' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExcessFineSubmit}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+              },
+            }}
+          >
+            Submit
           </Button>
         </DialogActions>
       </Dialog>

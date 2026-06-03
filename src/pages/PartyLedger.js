@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Container,
   Paper,
@@ -73,14 +75,19 @@ const PartyLedger = () => {
 
   const handleFetchLedger = async () => {
     if (!selectedParty) return;
+    const toastId = toast.loading('Fetching ledger...');
     try {
       const response = await partyService.getPartyLedger(selectedParty._id, startDate, endDate);
       const data = response?.data || response;
 
       console.log(data)
       setLedgerData(data);
+      toast.dismiss(toastId);
+      toast.success('Ledger loaded successfully');
     } catch (error) {
       console.error('Error fetching ledger:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to load ledger');
     }
   };
 
@@ -99,10 +106,15 @@ const PartyLedger = () => {
   const pendingSaudas = ledgerData?.pendingSaudas || [];
 
   const handlePrint = async () => {
+    const toastId = toast.loading('Printing ledger...');
     try {
       await printPartyLedger(party, entries, summary, pendingSaudas, startDate, endDate);
+      toast.dismiss(toastId);
+      toast.success('Ledger printed successfully');
     } catch (error) {
       console.error('Print failed:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to print ledger');
     }
   };
 
@@ -278,6 +290,7 @@ const PartyLedger = () => {
                                     <TableCell>Rate</TableCell>
                                     <TableCell>Remaining Fine</TableCell>
                                     <TableCell>Balance</TableCell>
+                                    <TableCell>Bhav Cut</TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -288,10 +301,17 @@ const PartyLedger = () => {
                                         <TableCell>{cut.saudaNo}</TableCell>
                                         <TableCell>{formatDate(cut.saudaDate)}</TableCell>
                                         <TableCell>{cut.quantity}</TableCell>
-                                        <TableCell>{cut.delivered?.toFixed(2)}</TableCell>
+                                        <TableCell>{(parseFloat(cut.delivered) || 0).toFixed(2)}</TableCell>
                                         <TableCell>{cut.rate}</TableCell>
                                         <TableCell>{remainingFine.toFixed(2)}</TableCell>
                                         <TableCell sx={{ fontWeight: 600 }}>{(cut.cutFine * (cut.rate / 1000)).toFixed(2)}</TableCell>
+                                        <TableCell>
+                                          {cut.isBhavCut === true ? (
+                                            <Chip label="Bhav Cut" size="small" color="error" />
+                                          ) : (
+                                            <Typography variant="body2" sx={{ color: '#64748b' }}>false</Typography>
+                                          )}
+                                        </TableCell>
                                       </TableRow>
                                     );
                                   })}
@@ -332,9 +352,9 @@ const PartyLedger = () => {
                         <TableCell>{sauda.saudaNo}</TableCell>
                         <TableCell>{formatDate(sauda.saudaDate)}</TableCell>
                         <TableCell>{sauda.quantity}</TableCell>
-                        <TableCell>{sauda.delivered?.toFixed(2)}</TableCell>
+                        <TableCell>{(parseFloat(sauda.delivered) || 0).toFixed(2)}</TableCell>
                         <TableCell>{sauda.rate}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{sauda.pendingQty?.toFixed(2)}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{(parseFloat(sauda.pendingQty) || 0).toFixed(2)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

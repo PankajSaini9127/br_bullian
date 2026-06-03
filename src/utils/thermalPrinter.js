@@ -65,18 +65,18 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     <head>
       <title>Party Ledger</title>
       <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 10px; }
-        .header { margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        body { font-family: Arial, sans-serif; font-size: 10px; padding: 10px; }
+        h1 { text-align: center; margin-bottom: 5px; font-size: 14px; }
+        .header { margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
         th { background-color: #f2f2f2; font-weight: bold; }
-        .section-title { font-weight: bold; margin-top: 20px; margin-bottom: 10px; }
-        .closing-section { margin-top: 30px; }
-        .small-font { font-size: 10px; }
-        .invoice-group { margin-bottom: 30px; }
+        .section-title { font-weight: bold; margin-top: 10px; margin-bottom: 5px; font-size: 11px; }
+        .closing-section { margin-top: 15px; }
+        .small-font { font-size: 9px; }
+        .invoice-group { margin-bottom: 15px; }
         @media print {
-          body { padding: 0; }
+          body { padding: 5px; }
         }
       </style>
     </head>

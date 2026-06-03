@@ -29,6 +29,7 @@ import {
   Pagination,
   Autocomplete,
   Tooltip,
+  Stack,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -73,6 +74,8 @@ const SalesInvoice = () => {
   const [editInvoiceDate, setEditInvoiceDate] = useState('');
   const [editAvailablePagga, setEditAvailablePagga] = useState([]);
   const [editCurrentPagga, setEditCurrentPagga] = useState([]);
+  const [editPartySearchQuery, setEditPartySearchQuery] = useState('');
+  const [editPartySearchResults, setEditPartySearchResults] = useState([]);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterPartyId, setFilterPartyId] = useState('');
@@ -189,6 +192,23 @@ const SalesInvoice = () => {
 
     return () => clearTimeout(debounceTimer);
   }, [filterPartySearchQuery, parties]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(async () => {
+      if (editPartySearchQuery) {
+        try {
+          const response = await partyService.searchParties(editPartySearchQuery);
+          setEditPartySearchResults(response?.data?.parties || []);
+        } catch (error) {
+          console.error('Error searching parties:', error);
+        }
+      } else {
+        setEditPartySearchResults(parties);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [editPartySearchQuery, parties]);
 
   const handleSelectAll = (event) => {
     const isChecked = event.target.checked;
@@ -403,7 +423,6 @@ const SalesInvoice = () => {
     doc.text('Thank you for your business!', 40, yPosition + 22, { align: 'center' });
 
     doc.save(`sales-invoice-${invoice?.salesInvoiceNo || invoice._id}.pdf`);
-    doc.autoPrint();
   };
 
   const handleBluetoothPrintSalesInvoice = async (invoice) => {
@@ -421,7 +440,8 @@ const SalesInvoice = () => {
 
   const handleEditSalesInvoice = async (invoice) => {
 
-    console.log(invoice);
+    console.log('Editing invoice:', invoice);
+    console.log('Party ID:', invoice.partyId?._id || invoice.partyId);
     setEditingInvoice(invoice);
     setEditPartyId(invoice.partyId?._id || invoice.partyId);
     setEditInvoiceDate(invoice.invoiceDate);
@@ -940,8 +960,8 @@ const SalesInvoice = () => {
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Gross Weight (g)</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Fine (g)</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>View</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Print</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>USB</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600, width: '100px' }}>Action</TableCell>
+                  {/* <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>USB</TableCell> */}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -990,26 +1010,18 @@ const SalesInvoice = () => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        <Tooltip title="Print">
-                          <IconButton
-                            size="small"
-                            onClick={() => handlePrintSalesInvoice(invoice)}
-                            sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
-                          >
-                            <PrintIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Download">
+                        <Tooltip title="Download PDF">
                           <IconButton
                             size="small"
                             onClick={() => handlePrintSalesInvoice(invoice)}
                             sx={{ color: '#10b981', '&:hover': { background: '#d1fae5' } }}
                           >
                             <DownloadIcon />
+                            
                           </IconButton>
                         </Tooltip>
-                      </TableCell>
-                      <TableCell>
+                      {/* </TableCell>
+                      <TableCell> */}
                         <Tooltip title="Print">
                           <IconButton
                             size="small"
@@ -1019,8 +1031,8 @@ const SalesInvoice = () => {
                             <PrintIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                      </TableCell>
-                      <TableCell>
+                      {/* </TableCell>
+                      <TableCell> */}
                         <Tooltip title="Edit">
                           <IconButton
                             size="small"
@@ -1176,47 +1188,41 @@ const SalesInvoice = () => {
           maxWidth="lg"
           fullWidth
         >
-          <DialogTitle
-            sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-              color: '#fff',
-              fontWeight: 600,
-            }}
-          >
-            Edit Sales Invoice
-          </DialogTitle>
-          <DialogContent sx={{ pt: 3 }}>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth size="small">
-                  <InputLabel shrink>Party</InputLabel>
-                  <Select
-                    value={editPartyId}
+          <DialogTitle>Edit Sales Invoice</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              <Autocomplete
+                fullWidth
+                size="small"
+                options={editPartySearchQuery ? editPartySearchResults : parties}
+                getOptionLabel={(option) => option.partyName || ''}
+                value={parties.find((p) => p._id === editPartyId) || null}
+                onChange={(e, newValue) => {
+                  console.log('Party changed to:', newValue);
+                  setEditPartyId(newValue?._id || '');
+                }}
+                onInputChange={(event, newInputValue) => {
+                  setEditPartySearchQuery(newInputValue);
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
                     label="Party"
-                    onChange={(e) => setEditPartyId(e.target.value)}
-                    notched
-                  >
-                    <MenuItem value="">Select Party</MenuItem>
-                    {parties.map((party) => (
-                      <MenuItem key={party._id} value={party._id}>
-                        {party.partyName}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  size="small"
-                  label="Date"
-                  type="date"
-                  value={editInvoiceDate}
-                  onChange={(e) => setEditInvoiceDate(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Grid>
-            </Grid>
+                    required
+                    InputLabelProps={{ shrink: true }}
+                  />
+                )}
+              />
+              <TextField
+                fullWidth
+                size="small"
+                label="Date"
+                type="date"
+                value={editInvoiceDate}
+                onChange={(e) => setEditInvoiceDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Stack>
 
             <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#424242' }}>
               Current Pagga

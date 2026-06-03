@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   Container,
   Typography,
@@ -38,6 +40,7 @@ const CaseBook = () => {
       setCashBook(response);
     } catch (error) {
       console.error('Error fetching cash book:', error);
+      toast.error('Failed to load cash book data');
     } finally {
       setLoading(false);
     }
