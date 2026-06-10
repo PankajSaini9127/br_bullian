@@ -749,13 +749,14 @@ const Invoice = () => {
   };
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       <Box sx={{ mb: 4 }}>
         <Typography
           variant="h4"
           sx={{
             mb: 2,
             fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
             background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -1051,7 +1052,7 @@ const Invoice = () => {
               mb: 4,
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 3 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#424242' }}>
                 Create New Invoice
               </Typography>
@@ -1201,11 +1202,12 @@ const Invoice = () => {
               mb: 2,
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 3 }}>
               <Typography
                 variant="h6"
                 sx={{
                   fontWeight: 700,
+                  fontSize: { xs: '1rem', sm: '1.25rem' },
                   background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
@@ -1448,7 +1450,7 @@ const Invoice = () => {
       )}
 
       {/* View Invoice Modal */}
-      <Dialog open={viewModalOpen} onClose={handleCloseViewModal} maxWidth="md" fullWidth>
+      <Dialog open={viewModalOpen} onClose={handleCloseViewModal} maxWidth="md" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', color: '#fff' }}>
           Invoice Details
         </DialogTitle>
@@ -1543,7 +1545,7 @@ const Invoice = () => {
       </Dialog>
 
       {/* Edit Invoice Modal */}
-      <Dialog open={editModalOpen} onClose={handleCloseEditModal} maxWidth="lg" fullWidth>
+      <Dialog open={editModalOpen} onClose={handleCloseEditModal} maxWidth="lg" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle>Edit Invoice</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>

@@ -268,9 +268,10 @@ const NavBar = ({ children }) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { md: `calc(100% - ${drawerWidth}px)` },
-          mt: 8,
+          p: { xs: 1, sm: 2, md: 3 },
+          width: { xs: '100%', md: `calc(100% - ${drawerWidth}px)` },
+          mt: { xs: 7, md: 8 },
+          overflow: 'hidden',
         }}
       >
         {children}

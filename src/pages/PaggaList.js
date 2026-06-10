@@ -63,13 +63,14 @@ const PaggaList = () => {
   };
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       <Box sx={{ mb: 4 }}>
         <Typography
           variant="h4"
           sx={{
             mb: 2,
             fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
             background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',

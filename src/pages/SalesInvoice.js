@@ -559,21 +559,22 @@ const SalesInvoice = () => {
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: { xs: 2, md: 4 }, mb: 4, px: { xs: 1, sm: 2, md: 3 } }}>
       <Paper
         elevation={3}
         sx={{
-          p: 4,
+          p: { xs: 2, sm: 3, md: 4 },
           borderRadius: 2,
           boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
           border: '1px solid #e2e8f0',
         }}
       >
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 4 }}>
           <Typography
             variant="h5"
             sx={{
               fontWeight: 700,
+              fontSize: { xs: '1.25rem', sm: '1.5rem' },
               background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -1082,6 +1083,7 @@ const SalesInvoice = () => {
           onClose={handleCloseViewModal}
           maxWidth="md"
           fullWidth
+          sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}
         >
           <DialogTitle
             sx={{
@@ -1187,6 +1189,7 @@ const SalesInvoice = () => {
           onClose={() => setEditModalOpen(false)}
           maxWidth="lg"
           fullWidth
+          sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}
         >
           <DialogTitle>Edit Sales Invoice</DialogTitle>
           <DialogContent>

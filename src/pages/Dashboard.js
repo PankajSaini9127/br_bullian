@@ -170,13 +170,14 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 2 }}>
           <Typography
             variant="h4"
             sx={{
               fontWeight: 700,
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
               background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -190,7 +191,8 @@ const Dashboard = () => {
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
-            sx={{ minWidth: 200 }}
+            size="small"
+            sx={{ minWidth: { xs: '100%', sm: 200 } }}
           />
         </Box>
         <Typography variant="body2" sx={{ color: '#64748b' }}>

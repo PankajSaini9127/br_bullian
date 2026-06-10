@@ -5,9 +5,47 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* Mobile responsive table scrolling */
+.MuiTableContainer-root {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent horizontal overflow on mobile */
+@media (max-width: 600px) {
+  .MuiContainer-root {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .MuiPaper-root {
+    overflow-x: auto;
+  }
+
+  .MuiTableCell-root {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .MuiButton-root {
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+
+  .MuiDialogContent-root {
+    padding: 12px !important;
+  }
+
+  .MuiDialogTitle-root {
+    padding: 12px 16px !important;
+  }
 }

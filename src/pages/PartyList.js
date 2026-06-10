@@ -171,13 +171,14 @@ const PartyList = () => {
   };
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       <Box sx={{ mb: 4 }}>
         <Typography
           variant="h4"
           sx={{
             mb: 2,
             fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
             background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -185,7 +186,7 @@ const PartyList = () => {
         >
           Party List
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3 }}>
           <TextField
             placeholder="Search parties..."
             variant="outlined"
@@ -308,7 +309,7 @@ const PartyList = () => {
         </Box>
       </Paper>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md">
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 }, width: { xs: 'calc(100% - 16px)', sm: undefined } } }}>
         <DialogTitle>
           {editingParty ? 'Edit Party' : 'Add New Party'}
         </DialogTitle>
