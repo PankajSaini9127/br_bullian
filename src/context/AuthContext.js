@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { startLoading, stopLoading } from '../utils/loader';
 
 const AuthContext = createContext(null);
 
@@ -20,6 +21,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (userData) => {
+    startLoading();
     try {
       const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
       console.log('API URL:', apiUrl);
@@ -55,6 +57,8 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error('Login error:', error);
       return { success: false, error: error.message };
+    } finally {
+      stopLoading();
     }
   };
 

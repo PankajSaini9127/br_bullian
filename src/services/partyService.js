@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { attachLoaderInterceptors } from '../utils/loader';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
 
@@ -113,6 +114,9 @@ async function getPartySaudaSummary(partyId) {
     throw error;
   }
 }
+
+// Show the BR logo loader while requests are in flight
+attachLoaderInterceptors(apiInstance);
 
 export default {
   addPartyDetails,
