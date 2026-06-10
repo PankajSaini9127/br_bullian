@@ -220,8 +220,8 @@ const SaudaDetails = () => {
   };
 
   return (
-    <Container maxWidth="lg">
-      <Paper sx={{ p: 3, mt: 4 }}>
+    <Container maxWidth="lg" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, mt: { xs: 2, md: 4 } }}>
         <Typography
           variant="h5"
           sx={{

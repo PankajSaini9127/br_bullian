@@ -142,9 +142,9 @@ const PartyLedger = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, color: '#6366f1' }}>
+    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2, md: 3 } }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
+        <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }, color: '#6366f1' }}>
           Party Ledger
         </Typography>
 

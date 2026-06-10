@@ -512,13 +512,14 @@ const Sauda = () => {
   };
 
   return (
-    <Container maxWidth="xl">
+    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
       <Box sx={{ mb: 4 }}>
         <Typography
           variant="h4"
           sx={{
             mb: 2,
             fontWeight: 700,
+            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
             background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -582,11 +583,11 @@ const Sauda = () => {
               border: '1px solid #e2e8f0',
             }}
           >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 2 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, color: '#424242' }}>
                 {tabValue === 'purchase' ? 'Purchase' : 'Sales'} Sauda List
               </Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 <Button
                   variant="contained"
                   startIcon={<PrintIcon />}
@@ -797,11 +798,13 @@ const Sauda = () => {
         onClose={handleCloseModal} 
         maxWidth="md" 
         fullWidth
+        sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}
         PaperProps={{
           sx: {
-            borderRadius: 3,
+            borderRadius: { xs: 2, sm: 3 },
             boxShadow: '0 20px 60px rgba(99, 102, 241, 0.3)',
             overflow: 'hidden',
+            width: { xs: 'calc(100% - 16px)' },
           },
         }}
       >

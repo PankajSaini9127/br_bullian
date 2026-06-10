@@ -208,14 +208,14 @@ const Case = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-      <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, color: '#1e293b' }}>
+    <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, mb: 4, px: { xs: 1, sm: 2, md: 3 } }}>
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }, color: '#1e293b' }}>
         Case Management
       </Typography>
 
       <Card sx={{ borderRadius: 2, boxShadow: 3, mb: 3 }}>
         <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 2 }}>
             <Tabs
               value={tabValue}
               onChange={(e, v) => {
@@ -224,6 +224,8 @@ const Case = () => {
               }}
               textColor="primary"
               indicatorColor="primary"
+              variant="scrollable"
+              scrollButtons="auto"
             >
               <Tab label="Incoming Cases" icon={<IncomingIcon />} iconPosition="start" />
               <Tab label="Outgoing Cases" icon={<OutgoingIcon />} iconPosition="start" />
@@ -235,6 +237,7 @@ const Case = () => {
               sx={{
                 background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
                 fontWeight: 600,
+                whiteSpace: 'nowrap',
               }}
             >
               Add {tabValue === 0 ? 'Incoming' : 'Outgoing'} Case
@@ -306,7 +309,7 @@ const Case = () => {
       </Card>
 
       {/* Add Case Modal */}
-      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="md">
+      <Dialog open={openModal} onClose={handleCloseModal} maxWidth="md" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle>
           {isEdit ? 'Edit' : 'Add'} {paymentType === 'incoming' ? 'Incoming' : 'Outgoing'} Case
         </DialogTitle>
