@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { AuthProvider } from './context/AuthContext';
@@ -16,11 +16,14 @@ import PartyLedger from './pages/PartyLedger';
 import CaseBook from './pages/CaseBook';
 import Case from './pages/Case';
 import ProtectedRoute from './components/ProtectedRoute';
+import useAutoLogout from './hooks/useAutoLogout';
 
 function App() {
+  const token = localStorage.getItem('token');
+  useAutoLogout(token);
   return (
     <AuthProvider>
-      <Router>
+      
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
@@ -47,7 +50,7 @@ function App() {
             }
           />
         </Routes>
-      </Router>
+      
       <ToastContainer />
     </AuthProvider>
   );
