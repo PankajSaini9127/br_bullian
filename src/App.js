@@ -2,7 +2,9 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import './App.css';
 import { AuthProvider } from './context/AuthContext';
+import BRLoader from './components/BRLoader';
 import Login from './pages/Login';
 import NavBar from './components/NavBar';
 import PartyList from './pages/PartyList';
@@ -52,6 +54,7 @@ function App() {
         </Routes>
       
       <ToastContainer />
+      <BRLoader />
     </AuthProvider>
   );
 }
