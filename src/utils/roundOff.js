@@ -1,9 +1,8 @@
 /**
  * Rounds off fine value to nearest 0.5
  * Logic: 
- * - If decimal part <= 0.49, round down (0)
- * - If decimal part <= 0.99, round to 0.5
- * - Otherwise, round up (1)
+ * - If decimal part < 0.5, round down (0)
+ * - If decimal part >= 0.5, round to 0.5
  * 
  * @param {number} fine - The fine value to round
  * @returns {number} - The rounded fine value
@@ -14,7 +13,7 @@ export const roundOffFine = (fine) => {
   }
   
   const decimalPart = fine % 1;
-  const roundedDecimal = decimalPart <= 0.49 ? 0 : (decimalPart <= 0.99 ? 0.5 : 1);
+  const roundedDecimal = decimalPart < 0.5 ? 0 : 0.5;
   return Math.floor(fine) + roundedDecimal;
 };
 

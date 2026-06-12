@@ -52,6 +52,7 @@ const SalesInvoice = () => {
   const [partySearchResults, setPartySearchResults] = useState([]);
   const [filterPartySearchQuery, setFilterPartySearchQuery] = useState('');
   const [filterPartySearchResults, setFilterPartySearchResults] = useState([]);
+  const [paggaSearchTerm, setPaggaSearchTerm] = useState('');
   const today = new Date().toISOString().split('T')[0];
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [parties, setParties] = useState([]);
@@ -61,7 +62,6 @@ const SalesInvoice = () => {
   const [filterDate, setFilterDate] = useState('');
   const [checkedPagga, setCheckedPagga] = useState({});
   const [selectAll, setSelectAll] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [formError, setFormError] = useState('');
   const [salesInvoices, setSalesInvoices] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -92,8 +92,6 @@ const SalesInvoice = () => {
         }
       } catch (error) {
         console.error('Error fetching parties:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -141,23 +139,24 @@ const SalesInvoice = () => {
   }, [filterStartDate, filterEndDate, filterPartyId, page, limit]);
 
   useEffect(() => {
-    if (filterParty || filterDate) {
-      const filtered = availablePagga.filter(pagga => {
-        const partyMatch = !filterParty || 
-          pagga.invoiceId?.partyId?._id === filterParty || 
-          pagga.invoiceId?.partyId === filterParty;
-        
-        const paggaDate = pagga.invoiceId?.invoiceDate || pagga.createdAt;
-        const dateMatch = !filterDate || 
-          (paggaDate && paggaDate.split('T')[0] === filterDate);
-        
-        return partyMatch && dateMatch;
-      });
-      setFilteredPagga(filtered);
-    } else {
-      setFilteredPagga(availablePagga);
-    }
-  }, [filterParty, filterDate, availablePagga]);
+    const filtered = availablePagga.filter(pagga => {
+      const partyMatch = !filterParty ||
+        pagga.invoiceId?.partyId?._id === filterParty ||
+        pagga.invoiceId?.partyId === filterParty;
+
+      const paggaDate = pagga.invoiceId?.invoiceDate || pagga.createdAt;
+      const dateMatch = !filterDate ||
+        (paggaDate && paggaDate.split('T')[0] === filterDate);
+
+      const paggaSearchMatch = !paggaSearchTerm ||
+        (pagga.paggaNo && pagga.paggaNo.toLowerCase().includes(paggaSearchTerm.toLowerCase())) ||
+        (pagga.weight && String(pagga.weight).includes(paggaSearchTerm)) ||
+        (pagga.touch && String(pagga.touch).includes(paggaSearchTerm));
+
+      return partyMatch && dateMatch && paggaSearchMatch;
+    });
+    setFilteredPagga(filtered);
+  }, [filterParty, filterDate, paggaSearchTerm, availablePagga]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(async () => {
@@ -630,6 +629,7 @@ const SalesInvoice = () => {
           <Grid item xs={12} md={6}>
             <Autocomplete
               fullWidth
+              loading={false}
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
               value={parties.find(p => p._id === selectedPartyId) || null}
@@ -702,7 +702,18 @@ const SalesInvoice = () => {
         <Box sx={{ mb: 2 }}>
           <Grid container spacing={2}>
             <Grid item>
+              <TextField
+                placeholder="search pagga"
+                variant="outlined"
+                size="small"
+                value={paggaSearchTerm}
+                onChange={(e) => setPaggaSearchTerm(e.target.value)}
+                sx={{ minWidth: 200 }}
+              />
+            </Grid>
+            <Grid item>
               <Autocomplete
+                loading={false}
                 sx={{ minWidth: 250 }}
                 options={filterPartySearchQuery ? filterPartySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
@@ -899,6 +910,7 @@ const SalesInvoice = () => {
               </Grid>
               <Grid item xs={12} sm={4}>
                 <Autocomplete
+                  loading={false}
                   fullWidth
                   size="small"
                   options={filterPartySearchQuery ? filterPartySearchResults : parties}
@@ -1195,6 +1207,7 @@ const SalesInvoice = () => {
           <DialogContent>
             <Stack spacing={2} sx={{ mt: 1 }}>
               <Autocomplete
+                loading={false}
                 fullWidth
                 size="small"
                 options={editPartySearchQuery ? editPartySearchResults : parties}

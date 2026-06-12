@@ -28,6 +28,10 @@ import {
   Chip,
   Stack,
   InputAdornment,
+  Checkbox,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -62,6 +66,9 @@ const Sauda = () => {
   const [searchPartyId, setSearchPartyId] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
+  const [crossCutModalOpen, setCrossCutModalOpen] = useState(false);
+  const [pendingSaudas, setPendingSaudas] = useState([]);
+  const [selectedReferenceSauda, setSelectedReferenceSauda] = useState(null);
   const [formData, setFormData] = useState({
     partyName: '',
     partyId: '',
@@ -69,8 +76,10 @@ const Sauda = () => {
     quantity: '',
     rate: '',
     saudaType: 'purchase',
+    isCrossCut: false,
     status: 'Pending',
     deliveredQuantity: '',
+    referenceSaudaId: '',
   });
 
   const numberToWords = (num) => {
@@ -215,6 +224,7 @@ const Sauda = () => {
       saudaType: sauda.saudaType || sauda.type || tabValue,
       status: sauda.status || 'Pending',
       deliveredQuantity: sauda.deliveredQuantity || '',
+      isCrossCut: sauda.isCrossCut || false,
     });
     setModalOpen(true);
   };
@@ -232,6 +242,8 @@ const Sauda = () => {
       saudaType: 'purchase',
       status: 'Pending',
       deliveredQuantity: '',
+      isCrossCut: false,
+      referenceSaudaId: '',
     });
   };
 
@@ -257,9 +269,25 @@ const Sauda = () => {
       saudaType: formData.saudaType,
       status: formData.status,
       deliveredQuantity: formData.deliveredQuantity,
+      isCrossCut: formData.isCrossCut,
+      referenceSaudaId: formData.referenceSaudaId,
     };
 
     try {
+      if (formData.isCrossCut && !formData.referenceSaudaId) {
+        toast.error('Please select a reference sauda for cross cut');
+        return;
+      }
+
+      if (formData.isCrossCut) {
+        const oppositeType = formData.saudaType === 'purchase' ? 'sales' : 'purchase';
+        const pendingOppositeSaudas = await saudaService.getPartyPendingSaudas(formData.partyId, oppositeType, { crossSauda: true });
+
+        if (pendingOppositeSaudas.length === 0) {
+          toast.warning(`No pending ${oppositeType} saudas found for this party. Please add ${oppositeType} sauda first.`);
+          return;
+        }
+      }
 
       console.log(editingSauda)
       if (editingSauda) {
@@ -280,6 +308,31 @@ const Sauda = () => {
     } catch (error) {
       console.error('Error saving sauda:', error);
       toast.error('Failed to save sauda');
+    }
+  };
+
+  const handleCrossCutCheckboxChange = async (e) => {
+    const isChecked = e.target.checked;
+    setFormData({ ...formData, isCrossCut: isChecked });
+
+    if (isChecked && formData.partyId) {
+      try {
+        const oppositeType = formData.saudaType === 'purchase' ? 'sales' : 'purchase';
+        const pendingSaudas = await saudaService.getPartyPendingSaudas(formData.partyId, oppositeType, { crossSauda: true });
+        setPendingSaudas(pendingSaudas);
+
+        if (pendingSaudas.length > 0) {
+          setSelectedReferenceSauda(pendingSaudas[0]._id);
+          setCrossCutModalOpen(true);
+        } else {
+          toast.warning(`No pending ${oppositeType} saudas found for this party`);
+          setFormData({ ...formData, isCrossCut: false });
+        }
+      } catch (error) {
+        console.error('Error fetching pending saudas:', error);
+        toast.error('Failed to fetch pending saudas');
+        setFormData({ ...formData, isCrossCut: false });
+      }
     }
   };
 
@@ -1034,6 +1087,22 @@ const Sauda = () => {
                 }}
               />
             </Stack>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.isCrossCut}
+                  onChange={handleCrossCutCheckboxChange}
+                  sx={{
+                    color: '#6366f1',
+                    '&.Mui-checked': {
+                      color: '#6366f1',
+                    },
+                  }}
+                />
+              }
+              label="Cross Cut"
+              sx={{ fontWeight: 600, color: '#475569' }}
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 4, pt: 2 }}>
@@ -1125,6 +1194,96 @@ const Sauda = () => {
             }}
           >
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cross Cut Reference Sauda Modal */}
+      <Dialog
+        open={crossCutModalOpen}
+        onClose={() => {
+          setCrossCutModalOpen(false);
+          setFormData({ ...formData, isCrossCut: false });
+        }}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', color: '#fff' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <CheckIcon />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Select Reference Sauda for Cross Cut
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ py: 3 }}>
+          <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
+            Select the pending sauda to cross with this sauda. The oldest pending sauda is pre-selected.
+          </Typography>
+          <RadioGroup
+            value={selectedReferenceSauda}
+            onChange={(e) => setSelectedReferenceSauda(e.target.value)}
+          >
+            {pendingSaudas.map((sauda) => (
+              <FormControlLabel
+                key={sauda._id}
+                value={sauda._id}
+                control={<Radio />}
+                label={
+                  <Box>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {sauda.saudaNo || `Sauda #${sauda._id}`}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#64748b' }}>
+                      Date: {sauda.saudaDate} | Qty: {sauda.quantity}g | Rate: ₹{sauda.rate}/1000g
+                    </Typography>
+                  </Box>
+                }
+                sx={{ mb: 1 }}
+              />
+            ))}
+          </RadioGroup>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 0 }}>
+          <Button
+            onClick={() => {
+              setCrossCutModalOpen(false);
+              setFormData({ ...formData, isCrossCut: false });
+            }}
+            variant="outlined"
+            sx={{
+              borderColor: '#64748b',
+              color: '#64748b',
+              '&:hover': {
+                borderColor: '#475569',
+                background: '#f1f5f9',
+              },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              setCrossCutModalOpen(false);
+              setFormData({ ...formData, referenceSaudaId: selectedReferenceSauda });
+              toast.success('Reference sauda selected for cross cut');
+            }}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                boxShadow: '0 6px 16px rgba(99, 102, 241, 0.4)',
+              },
+            }}
+          >
+            Confirm
           </Button>
         </DialogActions>
       </Dialog>

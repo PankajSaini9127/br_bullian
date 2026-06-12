@@ -118,25 +118,26 @@ const PartyLedger = () => {
     }
   };
 
-  let totalDebit = 0;
-  let totalCredit = 0;
+  const openingBalance = Math.trunc(party?.openingBalance || 0);
+  let totalDebit = openingBalance > 0 ? openingBalance : 0;
+  let totalCredit = openingBalance < 0 ? Math.abs(openingBalance) : 0;
 
   const getDebitAmount = (entry) => {
     if (entry.type === 'payment') {
-      return entry.paymentType === 'incoming' ? (entry.amount || 0) : 0;
+      return entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : 0;
     }
     if (entry.type === 'incoming') {
-      return entry.saudaCuts?.reduce((s, c) => s + (c.cutFine * c.rate / 1000), 0) || 0;
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
     return 0;
   };
 
   const getCreditAmount = (entry) => {
     if (entry.type === 'payment') {
-      return entry.paymentType === 'outgoing' ? (entry.amount || 0) : 0;
+      return entry.paymentType === 'outgoing' ? Math.trunc(entry.amount || 0) : 0;
     }
     if (entry.type === 'sales') {
-      return entry.amount || entry.totalFine || 0;
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
     return 0;
   };
@@ -236,6 +237,15 @@ const PartyLedger = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
+                <TableRow sx={{ background: '#f5f5f5' }}>
+                  <TableCell>-</TableCell>
+                  <TableCell><strong>Opening Balance</strong></TableCell>
+                  <TableCell>-</TableCell>
+                  <TableCell>{openingBalance > 0 ? openingBalance : '-'}</TableCell>
+                  <TableCell>{openingBalance < 0 ? Math.abs(openingBalance) : '-'}</TableCell>
+                  <TableCell sx={{ fontWeight: 600 }}>{Math.trunc(totalDebit - totalCredit)}</TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
                   {entries.map((entry, idx) => (
                     <React.Fragment key={idx}>
                       <TableRow key={idx}>
@@ -247,14 +257,14 @@ const PartyLedger = () => {
                       <TableCell>{entry.type === 'payment' ? '-' : (entry.totalFine?.toFixed(2) + ' g')}</TableCell>
                       <TableCell>
                         {entry.type === 'payment' 
-                          ? (entry.paymentType === 'incoming' ? (entry.amount || 0).toFixed(2) : '-')
-                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + (c.cutFine * c.rate / 1000), 0) || 0).toFixed(2) : '-')
+                          ? (entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : '-')
+                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')
                         }
                       </TableCell>
                       <TableCell>
-                        {entry.type === 'payment' 
-                          ? (entry.paymentType === 'outgoing' ? (entry.amount || 0).toFixed(2) : '-')
-                          : (entry.type === 'sales' ? (entry.amount || entry.totalFine || 0).toFixed(2) : '-')
+                        {entry.type === 'payment'
+                          ? (entry.paymentType === 'outgoing' ? Math.trunc(entry.amount || 0) : '-')
+                          : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')
                         }
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
@@ -263,7 +273,7 @@ const PartyLedger = () => {
                           const credit = getCreditAmount(entry);
                           totalDebit += debit;
                           totalCredit += credit;
-                          return (totalDebit - totalCredit).toFixed(2);
+                          return Math.trunc(totalDebit - totalCredit);
                         })()}
                       </TableCell>
                       <TableCell>
@@ -288,6 +298,7 @@ const PartyLedger = () => {
                                     <TableCell>Booking Qty</TableCell>
                                     <TableCell>Delivered</TableCell>
                                     <TableCell>Rate</TableCell>
+                                    <TableCell>Cut Fine</TableCell>
                                     <TableCell>Remaining Fine</TableCell>
                                     <TableCell>Balance</TableCell>
                                     <TableCell>Bhav Cut</TableCell>
@@ -303,8 +314,9 @@ const PartyLedger = () => {
                                         <TableCell>{cut.quantity}</TableCell>
                                         <TableCell>{(parseFloat(cut.delivered) || 0).toFixed(2)}</TableCell>
                                         <TableCell>{cut.rate}</TableCell>
+                                        <TableCell>{(parseFloat(cut.cutFine) || 0).toFixed(2)}</TableCell>
                                         <TableCell>{remainingFine.toFixed(2)}</TableCell>
-                                        <TableCell sx={{ fontWeight: 600 }}>{(cut.cutFine * (cut.rate / 1000)).toFixed(2)}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>{Math.trunc(cut.cutFine * (cut.rate / 1000))}</TableCell>
                                         <TableCell>
                                           {cut.isBhavCut === true ? (
                                             <Chip label="Bhav Cut" size="small" color="error" />
@@ -371,7 +383,7 @@ const PartyLedger = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>Balance</Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: (totalDebit - totalCredit) < 0 ? '#ef4444' : '#10b981' }}>{(totalDebit - totalCredit).toFixed(2)}</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: (totalDebit - totalCredit) < 0 ? '#ef4444' : '#10b981' }}>{Math.trunc(totalDebit - totalCredit)}</Typography>
                 </Grid>
               </Grid>
             </Box>
@@ -394,15 +406,22 @@ export default PartyLedger;
 const printStyle = document.createElement('style');
 printStyle.textContent = `
   @media print {
-    @page { size: A4; margin: 10mm; }
-    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .no-print, button, .MuiButton-root, .MuiIconButton-root, .MuiAutocomplete-root, .MuiTextField-root { display: none !important; }
-    .MuiContainer-root { max-width: 100% !important; padding: 0 !important; }
-    table { font-size: 12pt !important; width: 100% !important; }
-    th { font-size: 13pt !important; padding: 4px !important; }
-    td { font-size: 12pt !important; padding: 4px !important; }
-    h1, h2, h3, h4, h5, h6 { font-size: 14pt !important; }
-    p, span, div { font-size: 12pt !important; }
+    @page {
+      size: A4;
+      margin: 14mm 5mm 12mm 5mm;
+      @top-center { content: "Party Ledger"; font-size: 9pt; border-bottom: 1px solid #000; padding-bottom: 2px; }
+      @bottom-center { content: "Page " counter(page); font-size: 8pt; }
+    }
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; margin: 0; padding: 0; }
+    .no-print, button, .MuiButton-root, .MuiIconButton-root, .MuiAutocomplete-root, .MuiTextField-root, .MuiDialog-root { display: none !important; }
+    .MuiContainer-root { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
+    table { font-size: 9pt !important; width: 100% !important; border-collapse: collapse !important; }
+    thead { display: table-header-group; }
+    th { font-size: 9pt !important; padding: 2px !important; border: 1px solid #000 !important; background: none !important; }
+    td { font-size: 9pt !important; padding: 2px !important; border: 1px solid #ccc !important; }
+    tr { page-break-inside: avoid; }
+    h1, h2, h3, h4, h5, h6 { margin: 2px 0 !important; font-size: 11pt !important; font-weight: normal !important; }
+    p, span, div { font-size: 9pt !important; }
   }
 `;
 document.head.appendChild(printStyle);

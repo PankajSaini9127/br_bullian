@@ -27,6 +27,7 @@ import {
   Box,
   Autocomplete,
   Stack,
+  Pagination,
 } from '@mui/material';
 import {
   ArrowUpward as IncomingIcon,
@@ -62,8 +63,8 @@ const Case = () => {
   const [amount, setAmount] = useState('');
   const [remark, setRemark] = useState('');
   const [paymentDate, setPaymentDate] = useState('');
-  
-  const limit = 10;
+
+  const limit = 15;
 
   // Fetch parties
   useEffect(() => {
@@ -104,6 +105,8 @@ const Case = () => {
       const paymentType = tabValue === 0 ? 'incoming' : 'outgoing';
       const response = await caseService.getPayments({ paymentType }, page, limit);
       setCases(response?.payments || response?.data || []);
+
+      console.log(response)
       setTotalPages(response?.pagination?.totalPages || response?.totalPages || 1);
     } catch (error) {
       console.error('Error fetching cases:', error);
@@ -277,7 +280,7 @@ const Case = () => {
                       <TableCell sx={{ fontWeight: 600 }}>{caseItem.paymentNo || '-'}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{caseItem.partyId?.partyName || '-'}</TableCell>
                       <TableCell sx={{ color: '#10b981', fontWeight: 600 }}>
-                        ₹{(caseItem.amount || 0).toFixed(2)}
+                        ₹{formatAmount(Math.trunc(caseItem.amount || 0))}
                       </TableCell>
                       <TableCell>{caseItem.remark || '-'}</TableCell>
                       <TableCell>
@@ -305,6 +308,19 @@ const Case = () => {
               </TableBody>
             </Table>
           </TableContainer>
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={(event, value) => setPage(value)}
+              color="primary"
+              sx={{
+                '& .MuiPaginationItem-root': {
+                  fontWeight: 600,
+                },
+              }}
+            />
+          </Box>
         </CardContent>
       </Card>
 

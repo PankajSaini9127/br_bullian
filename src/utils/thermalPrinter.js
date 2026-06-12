@@ -59,248 +59,208 @@ async function disconnectPrinter(device) {
 
 export async function printPartyLedger(party, entries, summary, pendingSaudas, startDate, endDate) {
   let htmlContent = '';
-  
+
+  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-GB') : '-';
+
+  const getDebitAmount = (entry) => {
+    if (entry.type === 'payment') {
+      return entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : 0;
+    }
+    if (entry.type === 'incoming') {
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+    }
+    return 0;
+  };
+
+  const getCreditAmount = (entry) => {
+    if (entry.type === 'payment') {
+      return entry.paymentType === 'outgoing' ? Math.trunc(entry.amount || 0) : 0;
+    }
+    if (entry.type === 'sales') {
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+    }
+    return 0;
+  };
+
+  let totalDebit = 0;
+  let totalCredit = 0;
+  const openingBalance = Math.trunc(summary?.openingBalance || 0);
+  const openingDebit = openingBalance > 0 ? openingBalance : 0;
+  const openingCredit = openingBalance < 0 ? Math.abs(openingBalance) : 0;
+  let runningBal = openingDebit - openingCredit;
+
   htmlContent += `
     <html>
     <head>
       <title>Party Ledger</title>
       <style>
-        body { font-family: Arial, sans-serif; font-size: 10px; padding: 10px; }
-        h1 { text-align: center; margin-bottom: 5px; font-size: 14px; }
-        .header { margin-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        th, td { border: 1px solid #ddd; padding: 4px; text-align: left; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        .section-title { font-weight: bold; margin-top: 10px; margin-bottom: 5px; font-size: 11px; }
-        .closing-section { margin-top: 15px; }
-        .small-font { font-size: 9px; }
-        .invoice-group { margin-bottom: 15px; }
-        @media print {
-          body { padding: 5px; }
+        @page {
+          size: A4;
+          margin: 14mm 5mm 12mm 5mm;
+          @top-center { content: "${party.partyName || '-'}"; font-size: 9px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+          @bottom-center { content: "Page " counter(page); font-size: 8px; }
         }
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9px; padding: 0; line-height: 1.2; }
+        .ledger-header { text-align: center; margin-bottom: 6px; border-bottom: 1px solid #000; padding-bottom: 4px; }
+        .ledger-header h2 { margin: 0; font-size: 13px; font-weight: normal; }
+        .ledger-header .sub { margin: 2px 0 0; font-size: 9px; color: #333; }
+        .ledger-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .ledger-table th, .ledger-table td { border: 1px solid #333; padding: 2px 4px; text-align: left; vertical-align: top; }
+        .ledger-table th { font-weight: normal; background: none; font-size: 9px; }
+        .ledger-table td { font-size: 9px; }
+        .ledger-table .num { text-align: right; }
+        .ledger-table .center { text-align: center; }
+        .ledger-table .bold { font-weight: bold; }
+        .ledger-table tbody tr:nth-child(even) { background: #f9f9f9; }
+        .totals-row td { border-top: 2px solid #333; font-weight: bold; }
+        .opening-row td { border-top: 2px solid #333; background: #f5f5f5; font-weight: bold; }
+        .closing { margin-top: 6px; border-top: 1px solid #333; padding-top: 4px; }
+        .closing table { width: 100%; border-collapse: collapse; }
+        .closing td { border: none; padding: 1px 0; font-size: 9px; }
+        .closing .num { text-align: right; }
       </style>
     </head>
     <body>
-      <h1>PARTY LEDGER</h1>
-      <div class="header">
-        <p><strong>Party:</strong> ${party.partyName || '-'}</p>
-        ${startDate || endDate ? `<p><strong>Period:</strong> ${startDate || '...'} to ${endDate || '...'}</p>` : ''}
+      <div class="ledger-header">
+        <h2>${party.partyName || '-'}</h2>
+        <div class="sub">${startDate && endDate ? formatDate(startDate) + ' to ' + formatDate(endDate) : 'Ledger Statement'}</div>
       </div>
-  `;
 
-  let runningBal = 0;
-  let allPendingSaudas = pendingSaudas || [];
-  
-  entries.forEach((entry, index) => {
-    const date = new Date(entry.date).toLocaleDateString('en-GB');
-    let type, invNo, fine;
-    
-    if (entry.type === 'payment') {
-      type = entry.paymentType === 'incoming' ? 'PAY-IN' : 'PAY-OUT';
-      invNo = entry.paymentNo;
-      fine = entry.paymentNo;
-    } else {
-      type = entry.type === 'incoming' ? 'IN' : 'SL';
-      invNo = entry.invoiceNo || '-';
-      fine = entry.totalFine?.toFixed(2) || '-';
-    }
-    
-    // Calculate total amount
-    let totalAmount = 0;
-    if (entry.type === 'payment') {
-      totalAmount = entry.amount || 0;
-    } else if (entry.type === 'incoming' && entry.saudaCuts) {
-      entry.saudaCuts.forEach((cut) => {
-        totalAmount += (cut.cutFine * cut.rate / 1000);
-      });
-    } else if (entry.type === 'sales') {
-      totalAmount = entry.totalFine || 0;
-    }
-    
-    let debit, credit;
-    if (entry.type === 'payment') {
-      debit = entry.paymentType === 'incoming' ? totalAmount.toFixed(2) : '-';
-      credit = entry.paymentType === 'outgoing' ? totalAmount.toFixed(2) : '-';
-      runningBal += entry.paymentType === 'incoming' ? -totalAmount : totalAmount;
-    } else {
-      debit = entry.type === 'incoming' ? totalAmount.toFixed(2) : '-';
-      credit = entry.type === 'sales' ? totalAmount.toFixed(2) : '-';
-      runningBal += entry.type === 'incoming' ? -totalAmount : totalAmount;
-    }
-    const bal = runningBal.toFixed(2);
-
-    htmlContent += `<div class="invoice-group">`;
-    htmlContent += `<div class="section-title">${index + 1} - <strong>${invNo}</strong> - ${date} (${type})</div>`;
-    
-    // Invoice details table
-    const columnHeader = entry.type === 'payment' ? 'Payment No' : 'Fine';
-    htmlContent += `
-      <table style="margin-bottom: 0;">
+      <table class="ledger-table">
         <thead>
           <tr>
-            <th>${columnHeader}</th>
-            <th>Dr</th>
-            <th>Cr</th>
-            <th>Bal</th>
+            <th style="width:40px;">Date</th>
+            <th>Particulars</th>
+            <th style="width:50px;" class="num">Fine (g)</th>
+            <th style="width:60px;" class="num">Debit (&#8377;)</th>
+            <th style="width:60px;" class="num">Credit (&#8377;)</th>
+            <th style="width:60px;" class="num">Balance (&#8377;)</th>
           </tr>
         </thead>
         <tbody>
+          <tr class="opening-row">
+            <td class="center">-</td>
+            <td>Opening Balance</td>
+            <td class="num">-</td>
+            <td class="num">${openingDebit || ''}</td>
+            <td class="num">${openingCredit || ''}</td>
+            <td class="num bold">${runningBal}</td>
+          </tr>
+  `;
+
+  entries.forEach((entry) => {
+    const date = formatDate(entry.date);
+    const debit = getDebitAmount(entry);
+    const credit = getCreditAmount(entry);
+    totalDebit += debit;
+    totalCredit += credit;
+    runningBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
+
+    let particulars = '';
+    let fineStr = '-';
+
+    if (entry.type === 'payment') {
+      particulars = (entry.paymentType === 'incoming' ? 'Payment In' : 'Payment Out') +
+        (entry.paymentNo ? ' - ' + entry.paymentNo : '');
+      fineStr = '-';
+    } else if (entry.type === 'incoming') {
+      particulars = 'Purchase' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
+      if (entry.saudaCuts?.length > 0) {
+        const saudaNos = entry.saudaCuts.map(c => c.saudaNo).filter(Boolean).join(', ');
+        if (saudaNos) particulars += ' (' + saudaNos + ')';
+      }
+      fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+    } else if (entry.type === 'sales') {
+      particulars = 'Sales' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
+      if (entry.saudaCuts?.length > 0) {
+        const saudaNos = entry.saudaCuts.map(c => c.saudaNo).filter(Boolean).join(', ');
+        if (saudaNos) particulars += ' (' + saudaNos + ')';
+      }
+      fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+    }
+
+    htmlContent += `
           <tr>
-            <td>${fine}</td>
-            <td>${debit}</td>
-            <td>${credit}</td>
-            <td>${bal}</td>
+            <td class="center">${date}</td>
+            <td>${particulars}</td>
+            <td class="num">${fineStr}</td>
+            <td class="num">${debit || ''}</td>
+            <td class="num">${credit || ''}</td>
+            <td class="num bold">${runningBal}</td>
+          </tr>
+    `;
+  });
+
+  const closingBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
+
+  htmlContent += `
+          <tr class="totals-row">
+            <td colspan="3" class="center">Closing Balance</td>
+            <td class="num">${openingDebit + totalDebit}</td>
+            <td class="num">${openingCredit + totalCredit}</td>
+            <td class="num">${closingBal}</td>
           </tr>
         </tbody>
       </table>
-    `;
+  `;
 
-    // Sauda Cuts table below invoice
-    if (entry.saudaCuts && entry.saudaCuts.length > 0) {
-      htmlContent += `
-        <table class="small-font" style="margin-top: 0;">
+  // Pending Saudas
+  if (pendingSaudas && pendingSaudas.length > 0) {
+    htmlContent += `
+      <div style="margin-top: 8px;">
+        <div style="font-weight: bold; font-size: 9px; margin-bottom: 2px;">Pending Saudas</div>
+        <table class="ledger-table">
           <thead>
             <tr>
-              <th>Sr</th>
-              <th>Sauda</th>
-              <th>Book Qty</th>
-              <th>Rate</th>
-              <th>Cut Fine</th>
-              <th>Amount</th>
+              <th>Sauda No</th>
+              <th class="num">Qty</th>
+              <th class="num">Delivered</th>
+              <th class="num">Pending</th>
+              <th class="num">Rate</th>
             </tr>
           </thead>
           <tbody>
-      `;
-      entry.saudaCuts.forEach((cut, cutIndex) => {
-        const cutAmount = (cut.cutFine * cut.rate / 1000);
-        htmlContent += `
-          <tr>
-            <td>${cutIndex + 1}</td>
-            <td>${cut.saudaNo || '-'}</td>
-            <td>${cut.quantity?.toFixed(2) || '-'}</td>
-            <td>${cut.rate?.toFixed(2) || '-'}</td>
-            <td>${cut.cutFine?.toFixed(2) || '-'}</td>
-            <td>₹${cutAmount.toFixed(2)}</td>
-          </tr>
-        `;
-      });
-      htmlContent += `
-          </tbody>
-        </table>
-      `;
-    }
-    
-    htmlContent += `</div>`;
-  });
-
-  // Pending Saudas table
-  if (allPendingSaudas.length > 0) {
-    htmlContent += `
-      <div class="section-title">PENDING SAUDAS</div>
-      <table>
-        <thead>
-          <tr>
-            <th>Sauda No</th>
-            <th>Booking Qty</th>
-            <th>Delivered</th>
-            <th>Pending</th>
-          </tr>
-        </thead>
-        <tbody>
     `;
-    allPendingSaudas.forEach((s) => {
+    pendingSaudas.forEach((s) => {
       htmlContent += `
-        <tr>
-          <td>${s.saudaNo || '-'}</td>
-          <td>${s.quantity?.toFixed(2) || '-'}</td>
-          <td>${s.delivered?.toFixed(2) || '-'}</td>
-          <td>${s.pendingQty?.toFixed(2) || '-'}</td>
-        </tr>
+            <tr>
+              <td>${s.saudaNo || '-'}</td>
+              <td class="num">${s.quantity || '-'}</td>
+              <td class="num">${s.delivered || '-'}</td>
+              <td class="num">${s.pendingQty || '-'}</td>
+              <td class="num">${s.rate || '-'}</td>
+            </tr>
       `;
     });
     htmlContent += `
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     `;
   }
 
-  // Closing Balance table
-  let totalIncomingFromCuts = 0;
-  let totalSalesFine = 0;
-  let totalPaymentIn = 0;
-  let totalPaymentOut = 0;
-  
-  entries.forEach((entry) => {
-    if (entry.type === 'payment') {
-      if (entry.paymentType === 'incoming') {
-        totalPaymentIn += (entry.amount || 0);
-      } else if (entry.paymentType === 'outgoing') {
-        totalPaymentOut += (entry.amount || 0);
-      }
-    } else if (entry.type === 'incoming' && entry.saudaCuts) {
-      entry.saudaCuts.forEach((cut) => {
-        totalIncomingFromCuts += (cut.cutFine * cut.rate / 1000);
-      });
-    } else if (entry.type === 'sales') {
-      totalSalesFine += (entry.totalFine || 0);
-    }
-  });
-
-  const balance = (totalIncomingFromCuts + totalPaymentIn) - (totalSalesFine + totalPaymentOut);
-
   htmlContent += `
-    <div class="section-title closing-section">CLOSING BALANCE</div>
-    <table>
-      <tbody>
-        <tr>
-          <td><strong>Total Incoming (from Sauda Cuts)</strong></td>
-          <td>₹${totalIncomingFromCuts.toFixed(2)}</td>
-        </tr>
-        ${totalPaymentIn > 0 ? `
-        <tr>
-          <td><strong>Total Incoming (Payments)</strong></td>
-          <td>₹${totalPaymentIn.toFixed(2)}</td>
-        </tr>
-        ` : ''}
-        <tr>
-          <td><strong>Total Outgoing (Sales)</strong></td>
-          <td>₹${totalSalesFine.toFixed(2)}</td>
-        </tr>
-        ${totalPaymentOut > 0 ? `
-        <tr>
-          <td><strong>Total Outgoing (Payments)</strong></td>
-          <td>₹${totalPaymentOut.toFixed(2)}</td>
-        </tr>
-        ` : ''}
-        <tr>
-          <td><strong>Balance (Remaining)</strong></td>
-          <td><strong>₹${balance.toFixed(2)}</strong></td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="margin-top: 30px; color: #666;">Printed: ${new Date().toLocaleString('en-GB')}</p>
-  `;
-
-  htmlContent += `
+      <div style="margin-top: 10px; font-size: 8px; color: #666; text-align: right;">
+        Printed: ${new Date().toLocaleString('en-GB')}
+      </div>
     </body>
     </html>
   `;
 
-  // Print directly without opening new tab using iframe
   const printFrame = document.createElement('iframe');
   printFrame.style.position = 'absolute';
   printFrame.style.top = '-9999px';
   printFrame.style.left = '-9999px';
   document.body.appendChild(printFrame);
-  
+
   const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
   printDoc.open();
   printDoc.write(htmlContent);
   printDoc.close();
-  
+
   printFrame.contentWindow.focus();
   printFrame.contentWindow.print();
-  
+
   setTimeout(() => {
     document.body.removeChild(printFrame);
   }, 1000);
@@ -324,15 +284,16 @@ export async function printInvoiceThermal(invoice) {
     <head>
       <title>Invoice</title>
       <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; padding: 20px; }
-        h1 { text-align: center; margin-bottom: 10px; font-size: 18px; }
-        .header { margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        body { font-family: Arial, sans-serif; font-size: 8px; padding: 4px; line-height: 1.1; }
+        h1 { text-align: center; margin: 0 0 2px; font-size: 11px; }
+        p { margin: 1px 0; }
+        .header { margin-bottom: 3px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+        th, td { border: 1px solid #ddd; padding: 1px 2px; text-align: left; }
         th { background-color: #f2f2f2; font-weight: bold; }
-        .section-title { font-weight: bold; margin-top: 20px; margin-bottom: 10px; }
-        .total-section { margin-top: 30px; }
-        .small-font { font-size: 10px; }
+        .section-title { font-weight: bold; margin-top: 4px; margin-bottom: 2px; }
+        .total-section { margin-top: 5px; }
+        .small-font { font-size: 7px; }
         @media print {
           body { padding: 0; }
         }
@@ -371,7 +332,7 @@ export async function printInvoiceThermal(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.99 ? 0.5 : 1);
+    const roundedFine = Math.floor(fine) + (dec < 0.5 ? 0 : 0.5);
     totalWt += wt;
     totalFine += roundedFine;
 
@@ -558,7 +519,7 @@ export async function printSalesInvoiceBluetooth(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.99 ? 0.5 : 1);
+    const roundedFine = Math.floor(fine) + (dec < 0.5 ? 0 : 0.5);
     totalWt += wt;
     totalFine += roundedFine;
 
@@ -709,7 +670,7 @@ export async function printInvoiceBluetooth(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec <= 0.49 ? 0 : dec <= 0.99 ? 0.5 : 1);
+    const roundedFine = Math.floor(fine) + (dec < 0.5 ? 0 : 0.5);
     totalWt += wt;
     totalFine += roundedFine;
 

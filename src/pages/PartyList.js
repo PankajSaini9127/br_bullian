@@ -36,12 +36,12 @@ const PartyList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [openDialog, setOpenDialog] = useState(false);
   const [editingParty, setEditingParty] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     partyName: '',
     contactNo: '',
     email: '',
     type: 'Customer',
+    openingBalance: '',
   });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [partyToDelete, setPartyToDelete] = useState(null);
@@ -64,8 +64,6 @@ const PartyList = () => {
       }
     } catch (error) {
       console.error('Error fetching parties:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -84,7 +82,7 @@ const PartyList = () => {
 
   const handleAddParty = () => {
     setEditingParty(null);
-    setFormData({ partyName: '', contactNo: '', email: '', type: 'Customer' });
+    setFormData({ partyName: '', contactNo: '', email: '', type: 'Customer', openingBalance: '' });
     setFormError({});
     setOpenDialog(true);
   };
@@ -245,6 +243,7 @@ const PartyList = () => {
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Contact No</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Email</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Type</TableCell>
+                <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Opening Balance</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -272,6 +271,9 @@ const PartyList = () => {
                         fontWeight: 600,
                       }}
                     />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>
+                    {party.openingBalance ? Number(party.openingBalance).toLocaleString('en-IN') : '0'}
                   </TableCell>
                   <TableCell>
                     <IconButton
@@ -344,6 +346,19 @@ const PartyList = () => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </Stack>
+            <TextField
+              fullWidth
+              label="Opening Balance"
+              size="small"
+              value={formData.openingBalance ? Number(formData.openingBalance).toLocaleString('en-IN') : ''}
+              onChange={(e) => {
+                const raw = e.target.value.replace(/,/g, '');
+                if (raw === '' || /^\d*$/.test(raw)) {
+                  setFormData({ ...formData, openingBalance: raw });
+                }
+              }}
+              placeholder="Enter opening balance amount"
+            />
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

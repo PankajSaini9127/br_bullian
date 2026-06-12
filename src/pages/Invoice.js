@@ -64,7 +64,6 @@ const Invoice = () => {
   const today = new Date().toISOString().split('T')[0];
   const [invoiceDate, setInvoiceDate] = useState(today);
   const [parties, setParties] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState({});
   const [paggaCount, setPaggaCount] = useState(4);
   const [items, setItems] = useState([
@@ -100,8 +99,6 @@ const Invoice = () => {
         }
       } catch (error) {
         console.error('Error fetching parties:', error);
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -850,6 +847,7 @@ const Invoice = () => {
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <Autocomplete
+                    loading={false}
                     options={partySearchQuery ? partySearchResults : parties}
                     getOptionLabel={(option) => option.partyName || ''}
                     value={parties.find((p) => p._id === filterPartyId) || null}
@@ -1074,6 +1072,7 @@ const Invoice = () => {
             <Grid container spacing={3}>
               <Grid item xs={12} md={3}>
                 <Autocomplete
+                  loading={false}
                   fullWidth
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
@@ -1552,6 +1551,7 @@ const Invoice = () => {
             <Autocomplete
               fullWidth
               size="small"
+              loading={false}
               options={parties}
               getOptionLabel={(option) => option.partyName || ''}
               value={parties.find((p) => p._id === editPartyId) || null}

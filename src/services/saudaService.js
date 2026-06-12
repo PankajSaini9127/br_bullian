@@ -71,6 +71,19 @@ async function getSaudaList(type, filters = {}) {
   }
 }
 
+async function getPartyPendingSaudas(partyId, saudaType, filters = {}) {
+  try {
+    const params = { partyId, ...filters };
+    if (saudaType) params.saudaType = saudaType;
+    const response = await apiInstance.get('/sauda/pending', { params });
+    console.log('Party Pending Saudas Retrieved:', response.data);
+    return response?.data?.data || response?.data || [];
+  } catch (error) {
+    console.error('Error Retrieving Party Pending Saudas:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 // Show the BR logo loader while requests are in flight
 attachLoaderInterceptors(apiInstance);
 
@@ -78,5 +91,6 @@ export default {
   addSauda,
   updateSauda,
   deleteSauda,
-  getSaudaList
+  getSaudaList,
+  getPartyPendingSaudas
 };
