@@ -80,7 +80,7 @@ async function getParties(params = {}) {
 
 async function searchParties(query) {
   try {
-    const response = await apiInstance.get('/parties', { params: { search: query } });
+    const response = await apiInstance.get('/parties/dropdown', { params: { search: query } });
     console.log('Parties Searched:', response.data);
     return response?.data || response?.data?.data || [];
   } catch (error) {

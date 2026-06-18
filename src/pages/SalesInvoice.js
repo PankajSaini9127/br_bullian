@@ -50,6 +50,11 @@ const SalesInvoice = () => {
   const [selectedPartyName, setSelectedPartyName] = useState('');
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [partySearchResults, setPartySearchResults] = useState([]);
+  const [partySaudaSummary, setPartySaudaSummary] = useState(null);
+  const [excessFineModalOpen, setExcessFineModalOpen] = useState(false);
+  const [excessWeight, setExcessWeight] = useState('');
+  const [excessRate, setExcessRate] = useState('');
+  const [excessFine, setExcessFine] = useState(0);
   const [filterPartySearchQuery, setFilterPartySearchQuery] = useState('');
   const [filterPartySearchResults, setFilterPartySearchResults] = useState([]);
   const [paggaSearchTerm, setPaggaSearchTerm] = useState('');
@@ -170,7 +175,7 @@ const SalesInvoice = () => {
       } else {
         setPartySearchResults(parties);
       }
-    }, 300);
+    }, 1000);
 
     return () => clearTimeout(debounceTimer);
   }, [partySearchQuery, parties]);
@@ -187,7 +192,7 @@ const SalesInvoice = () => {
       } else {
         setFilterPartySearchResults(parties);
       }
-    }, 300);
+    }, 1000);
 
     return () => clearTimeout(debounceTimer);
   }, [filterPartySearchQuery, parties]);
@@ -204,7 +209,7 @@ const SalesInvoice = () => {
       } else {
         setEditPartySearchResults(parties);
       }
-    }, 300);
+    }, 1000);
 
     return () => clearTimeout(debounceTimer);
   }, [editPartySearchQuery, parties]);
@@ -262,6 +267,112 @@ const SalesInvoice = () => {
     return total.toFixed(2);
   };
 
+  const handleExcessFineSubmit = async () => {
+    const toastId = toast.loading('Creating sales invoice...');
+    try {
+      setFormError('');
+
+      if (!excessWeight || !excessRate) {
+        toast.dismiss(toastId);
+        setFormError('Please fill weight and rate');
+        return;
+      }
+
+      const selectedPaggaIds = Object.keys(checkedPagga).filter(id => checkedPagga[id]);
+
+      const salesInvoiceData = {
+        partyId: selectedPartyId,
+        invoiceDate: invoiceDate,
+        paggaIds: selectedPaggaIds,
+        bhavcut: {
+          weight: excessWeight,
+          rate: excessRate,
+          amount: excessFine
+        }
+      };
+
+      await salesInvoiceService.createSalesInvoice(salesInvoiceData);
+
+      // Refresh sales invoices list with filter params
+      const params = {
+        page,
+        limit,
+      };
+      if (filterStartDate) params.startDate = filterStartDate;
+      if (filterEndDate) params.endDate = filterEndDate;
+      if (filterPartyId) params.partyId = filterPartyId;
+
+      const response = await salesInvoiceService.getSalesInvoices(params);
+
+      let salesInvoiceList = [];
+      if (response && Array.isArray(response.salesInvoices)) {
+        salesInvoiceList = response.salesInvoices;
+      } else if (Array.isArray(response)) {
+        salesInvoiceList = response;
+      } else if (response && Array.isArray(response.data)) {
+        salesInvoiceList = response.data;
+      }
+
+      setSalesInvoices(salesInvoiceList);
+
+      const paggaResponse = await salesInvoiceService.getAvailablePagga();
+      setAvailablePagga(paggaResponse?.puggas || []);
+
+      setSelectedPartyId('');
+      setSelectedPartyName('');
+      setInvoiceDate(today);
+      setCheckedPagga({});
+      setSelectAll(false);
+      setShowAddForm(false);
+      setFormError('');
+      setExcessFineModalOpen(false);
+      setExcessWeight('');
+      setExcessRate('');
+      setExcessFine(0);
+      toast.dismiss(toastId);
+      toast.success('Sales invoice created successfully');
+    } catch (error) {
+      console.error('Error creating sales invoice:', error);
+      setFormError('Failed to save sales invoice. Please try again.');
+      toast.dismiss(toastId);
+      toast.error('Failed to create sales invoice');
+    }
+  };
+
+  const handleExcessRateChange = (value) => {
+    const cleanValue = value.replace(/,/g, '');
+    setExcessRate(cleanValue);
+  };
+
+  const formatRate = (value) => {
+    if (!value) return '';
+    const numStr = value.toString();
+    let lastThree = numStr.substring(numStr.length - 3);
+    let otherNumbers = numStr.substring(0, numStr.length - 3);
+    if (otherNumbers !== '') {
+      lastThree = ',' + lastThree;
+    }
+    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
+  };
+
+  const handleCloseExcessFineModal = () => {
+    setExcessFineModalOpen(false);
+    setExcessWeight('');
+    setExcessRate('');
+    setExcessFine(0);
+  };
+
+  const fetchPartySaudaSummary = async (partyId) => {
+    try {
+      const response = await partyService.getPartySaudaSummary(partyId);
+      console.log('Party Sauda Summary Response:', response);
+      setPartySaudaSummary(response?.data || {});
+    } catch (error) {
+      console.error('Error fetching party sauda summary:', error);
+      setPartySaudaSummary({});
+    }
+  };
+
   const handleSaveSalesInvoice = async () => {
     const toastId = toast.loading('Creating sales invoice...');
     try {
@@ -278,6 +389,28 @@ const SalesInvoice = () => {
       if (selectedPaggaIds.length === 0) {
         toast.dismiss(toastId);
         setFormError('Please select at least one pagga');
+        return;
+      }
+
+      // Calculate total fine from selected pagga
+      const totalFine = availablePagga.reduce((total, pagga) => {
+        if (checkedPagga[pagga._id]) {
+          const weight = parseFloat(pagga.weight) || 0;
+          const touch = parseFloat(pagga.touch) || 0;
+          const fine = weight * touch / 100;
+          return total + roundOffFine(fine);
+        }
+        return total;
+      }, 0);
+
+      // Check if invoice fine exceeds remaining sales fine
+      const remainingSalesFine = partySaudaSummary?.sales?.remaining || 0;
+      if (totalFine > remainingSalesFine) {
+        toast.dismiss(toastId);
+        const excess = totalFine - remainingSalesFine;
+        setExcessFine(excess);
+        setExcessWeight(excess.toFixed(2));
+        setExcessFineModalOpen(true);
         return;
       }
 
@@ -637,9 +770,19 @@ const SalesInvoice = () => {
                 setSelectedPartyId(newValue?._id || '');
                 setSelectedPartyName(newValue?.partyName || '');
                 setFormError('');
+                setPartySearchQuery('');
+                setCheckedPagga({});
+                setSelectAll(false);
+                if (newValue?._id) {
+                  fetchPartySaudaSummary(newValue._id);
+                } else {
+                  setPartySaudaSummary(null);
+                }
               }}
-              onInputChange={(event, newInputValue) => {
-                setPartySearchQuery(newInputValue);
+              onInputChange={(event, newInputValue, reason) => {
+                if (reason === 'input') {
+                  setPartySearchQuery(newInputValue);
+                }
               }}
               renderInput={(params) => (
                 <TextField
@@ -662,6 +805,32 @@ const SalesInvoice = () => {
               )}
             />
           </Grid>
+        </Grid>
+
+        {/* Party Sauda Summary */}
+        {partySaudaSummary && (
+          <Grid item xs={12}>
+            <Stack spacing={2} sx={{ mt: 2 }}>
+              <Box sx={{ 
+                p: 2, 
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                border: '1px solid #bbf7d0',
+                borderRadius: 2 
+              }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#166534' }}>
+                  Sauda Summary
+                </Typography>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <Typography variant="body2" sx={{ color: '#64748b' }}>
+                    Remaining Sales Fine: <strong>{partySaudaSummary.sales?.remaining || 0}g</strong>
+                  </Typography>
+                </Stack>
+              </Box>
+            </Stack>
+          </Grid>
+        )}
+
+        <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <TextField
               fullWidth
@@ -721,8 +890,10 @@ const SalesInvoice = () => {
                 onChange={(event, newValue) => {
                   setFilterParty(newValue?._id || '');
                 }}
-                onInputChange={(event, newInputValue) => {
-                  setFilterPartySearchQuery(newInputValue);
+                onInputChange={(event, newInputValue, reason) => {
+                  if (reason === 'input') {
+                    setFilterPartySearchQuery(newInputValue);
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField
@@ -916,9 +1087,14 @@ const SalesInvoice = () => {
                   options={filterPartySearchQuery ? filterPartySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
                   value={parties.find((p) => p._id === filterPartyId) || null}
-                  onChange={(e, newValue) => setFilterPartyId(newValue?._id || '')}
-                  onInputChange={(event, newInputValue) => {
-                    setFilterPartySearchQuery(newInputValue);
+                  onChange={(e, newValue) => {
+                    setFilterPartyId(newValue?._id || '');
+                    setFilterPartySearchQuery('');
+                  }}
+                  onInputChange={(event, newInputValue, reason) => {
+                    if (reason === 'input') {
+                      setFilterPartySearchQuery(newInputValue);
+                    }
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -1216,9 +1392,12 @@ const SalesInvoice = () => {
                 onChange={(e, newValue) => {
                   console.log('Party changed to:', newValue);
                   setEditPartyId(newValue?._id || '');
+                  setEditPartySearchQuery('');
                 }}
-                onInputChange={(event, newInputValue) => {
-                  setEditPartySearchQuery(newInputValue);
+                onInputChange={(event, newInputValue, reason) => {
+                  if (reason === 'input') {
+                    setEditPartySearchQuery(newInputValue);
+                  }
                 }}
                 renderInput={(params) => (
                   <TextField
@@ -1383,6 +1562,52 @@ const SalesInvoice = () => {
           </DialogActions>
         </Dialog>
       </Paper>
+
+      {/* Excess Fine Modal */}
+      <Dialog open={excessFineModalOpen} onClose={handleCloseExcessFineModal} maxWidth="sm" fullWidth>
+        <DialogTitle>Bhav Cuts</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ color: '#dc2626' }}>
+              Invoice fine exceeds remaining sales fine by <strong>{excessFine.toFixed(2)}g</strong>
+            </Typography>
+            <TextField
+              fullWidth
+              label="Weight (g)"
+              type="number"
+              value={excessWeight}
+              disabled
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="Rate"
+              type="text"
+              value={formatRate(excessRate)}
+              onChange={(e) => handleExcessRateChange(e.target.value)}
+              size="small"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseExcessFineModal} sx={{ color: '#6366f1' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExcessFineSubmit}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #db2777 100%)',
+              },
+            }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };
@@ -1429,6 +1654,52 @@ thermalStyle.textContent = `
       display: table-header-group;
     }
 
+
+      {/* Excess Fine Modal */}
+      <Dialog open={excessFineModalOpen} onClose={handleCloseExcessFineModal} maxWidth="sm" fullWidth>
+        <DialogTitle>Bhav Cuts</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" sx={{ color: '#dc2626' }}>
+              Invoice fine exceeds remaining sales fine by <strong>{excessFine.toFixed(2)}g</strong>
+            </Typography>
+            <TextField
+              fullWidth
+              label="Weight (g)"
+              type="number"
+              value={excessWeight}
+              disabled
+              size="small"
+            />
+            <TextField
+              fullWidth
+              label="Rate"
+              type="text"
+              value={formatRate(excessRate)}
+              onChange={(e) => handleExcessRateChange(e.target.value)}
+              size="small"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleCloseExcessFineModal} sx={{ color: '#6366f1' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleExcessFineSubmit}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #db2777 100%)',
+              },
+            }}
+          >
+            Save
+          </Button>
+        </DialogActions>
+      </Dialog>
     th {
       font-size: 15pt !important;
       padding: 2px !important;

@@ -150,7 +150,7 @@ const Invoice = () => {
       } else {
         setPartySearchResults(parties);
       }
-    }, 300);
+    }, 1000);
 
     return () => clearTimeout(debounceTimer);
   }, [partySearchQuery, parties]);
@@ -851,9 +851,14 @@ const Invoice = () => {
                     options={partySearchQuery ? partySearchResults : parties}
                     getOptionLabel={(option) => option.partyName || ''}
                     value={parties.find((p) => p._id === filterPartyId) || null}
-                    onChange={(e, newValue) => setFilterPartyId(newValue?._id || '')}
-                    onInputChange={(event, newInputValue) => {
-                      setPartySearchQuery(newInputValue);
+                    onChange={(e, newValue) => {
+                      setFilterPartyId(newValue?._id || '');
+                      setPartySearchQuery('');
+                    }}
+                    onInputChange={(event, newInputValue, reason) => {
+                      if (reason === 'input') {
+                        setPartySearchQuery(newInputValue);
+                      }
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -1081,14 +1086,17 @@ const Invoice = () => {
                     setSelectedPartyId(newValue?._id || '');
                     setSelectedPartyName(newValue?.partyName || '');
                     setFormError('');
+                    setPartySearchQuery('');
                     if (newValue?._id) {
                       fetchPartySaudaSummary(newValue._id);
                     } else {
                       setPartySaudaSummary(null);
                     }
                   }}
-                  onInputChange={(event, newInputValue) => {
-                    setPartySearchQuery(newInputValue);
+                  onInputChange={(event, newInputValue, reason) => {
+                    if (reason === 'input') {
+                      setPartySearchQuery(newInputValue);
+                    }
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -1835,4 +1843,5 @@ thermalStyle.textContent = `
     }
   }
 `;
+document.head.appendChild(thermalStyle);
 document.head.appendChild(thermalStyle);

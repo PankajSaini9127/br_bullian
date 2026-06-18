@@ -69,6 +69,9 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     if (entry.type === 'incoming') {
       return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
+    if (entry.type === 'crosscut') {
+      return entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
+    }
     return 0;
   };
 
@@ -78,6 +81,9 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     }
     if (entry.type === 'sales') {
       return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+    }
+    if (entry.type === 'crosscut') {
+      return entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
     }
     return 0;
   };
@@ -177,6 +183,9 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
         if (saudaNos) particulars += ' (' + saudaNos + ')';
       }
       fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+    } else if (entry.type === 'crosscut') {
+      particulars = 'Cross Cut: ' + (entry.targetSaudaNo || '-') + ' (' + (entry.targetSaudaType || '-') + ')';
+      fineStr = entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0) + ' g';
     }
 
     htmlContent += `
@@ -189,6 +198,51 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
             <td class="num bold">${runningBal}</td>
           </tr>
     `;
+
+    // Add crosscut details row if it's a crosscut entry
+    if (entry.type === 'crosscut' && entry.details?.length > 0) {
+      entry.details.forEach((detail) => {
+        htmlContent += `
+          <tr>
+            <td colspan="6" style="padding: 2px 8px; background: #f9f9f9; font-size: 8px;">
+              <strong>Source:</strong> ${detail.sourceSaudaNo || '-'} (${detail.sourceSaudaType || '-'}) | 
+              <strong>Qty:</strong> ${detail.crosscutQuantity || '-'}g | 
+              <strong>Source Rate:</strong> ₹${detail.sourceRate?.toLocaleString('en-IN') || '-'} | 
+              <strong>Target Rate:</strong> ₹${detail.targetRate?.toLocaleString('en-IN') || '-'} | 
+              <strong>P/L:</strong> ₹${detail.profitLoss?.toLocaleString('en-IN') || '-'}
+            </td>
+          </tr>
+        `;
+      });
+    }
+
+    // Add sauda cuts details under each invoice entry
+    if ((entry.type === 'incoming' || entry.type === 'sales') && entry.saudaCuts?.length > 0) {
+      const hasCrossCut = entry.saudaCuts.some(c => c.isCrossCut);
+      entry.saudaCuts.forEach((cut) => {
+        const amount = cut.cutFine && cut.rate ? (cut.cutFine * cut.rate / 1000).toFixed(0) : '-';
+        const crossCutAmount = cut.isCrossCut && cut.crosscutQuantity && cut.rate 
+          ? (cut.crosscutQuantity * cut.rate / 1000).toFixed(0) 
+          : '-';
+        const saudaDate = cut.saudaDate ? new Date(cut.saudaDate).toLocaleDateString('en-GB') : '-';
+        htmlContent += `
+          <tr>
+            <td colspan="6" style="padding: 2px 8px; background: #fafafa; font-size: 8px;">
+             <strong> Sauda No:</strong> ${cut.saudaNo || '-'} | 
+              <strong>Date:</strong> ${saudaDate} | 
+              <strong>Booking:</strong> ${cut.quantity?.toFixed(2) || '-'}g | 
+              <strong>Rate:</strong> ₹${cut.rate?.toFixed(2) || '-'} | 
+              <strong>Cut Fine:</strong> ${cut.cutFine?.toFixed(2) || '-'}g | 
+              <strong>Amount:</strong> ₹${amount}
+              ${hasCrossCut ? ` | <strong>Cross Qty:</strong> ${cut.isCrossCut ? (cut.crosscutQuantity || '-') : '-'}g` : ''}
+              ${hasCrossCut ? ` | <strong>Source Rate:</strong> ${cut.isCrossCut ? ('₹' + (cut.sourceRate?.toLocaleString('en-IN') || '-')) : '-'}` : ''}
+              ${hasCrossCut ? ` | <strong>Target Rate:</strong> ${cut.isCrossCut ? ('₹' + (cut.targetRate?.toLocaleString('en-IN') || '-')) : '-'}` : ''}
+              ${hasCrossCut ? ` | <strong>Cross Amount:</strong> ₹${crossCutAmount}` : ''}
+            </td>
+          </tr>
+        `;
+      });
+    }
   });
 
   const closingBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
@@ -213,6 +267,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
           <thead>
             <tr>
               <th>Sauda No</th>
+              <th>Type</th>
               <th class="num">Qty</th>
               <th class="num">Delivered</th>
               <th class="num">Pending</th>
@@ -225,6 +280,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
       htmlContent += `
             <tr>
               <td>${s.saudaNo || '-'}</td>
+              <td>${s.saudaType || '-'}</td>
               <td class="num">${s.quantity || '-'}</td>
               <td class="num">${s.delivered || '-'}</td>
               <td class="num">${s.pendingQty || '-'}</td>
@@ -354,6 +410,7 @@ export async function printInvoiceThermal(invoice) {
 
   // Sauda Cuts table (smaller font)
   if (invoice.saudaCuts && invoice.saudaCuts.length > 0) {
+    const hasCrossCut = invoice.saudaCuts.some(c => c.isCrossCut);
     htmlContent += `
       <div class="section-title">SAUDA CUTS DETAILS</div>
       <table class="small-font">
@@ -364,11 +421,18 @@ export async function printInvoiceThermal(invoice) {
             <th>Delivered</th>
             <th>Rate</th>
             <th>Cut Fine</th>
+            ${hasCrossCut ? '<th>Cross Qty</th>' : ''}
+            ${hasCrossCut ? '<th>Source Rate</th>' : ''}
+            ${hasCrossCut ? '<th>Target Rate</th>' : ''}
+            ${hasCrossCut ? '<th>Amount</th>' : ''}
           </tr>
         </thead>
         <tbody>
     `;
     invoice.saudaCuts.forEach((cut) => {
+      const crossCutAmount = cut.isCrossCut && cut.crosscutQuantity && cut.rate 
+        ? (cut.crosscutQuantity * cut.rate / 1000).toFixed(2) 
+        : '-';
       htmlContent += `
         <tr>
           <td>${cut.saudaNo || '-'}</td>
@@ -376,6 +440,10 @@ export async function printInvoiceThermal(invoice) {
           <td>${cut.delivered?.toFixed(2) || '-'}</td>
           <td>${cut.rate?.toFixed(2) || '-'}</td>
           <td>${cut.cutFine?.toFixed(2) || '-'}</td>
+          ${hasCrossCut ? `<td>${cut.isCrossCut ? (cut.crosscutQuantity || '-') : '-'}</td>` : ''}
+          ${hasCrossCut ? `<td>${cut.isCrossCut ? (cut.sourceRate?.toLocaleString('en-IN') || '-') : '-'}</td>` : ''}
+          ${hasCrossCut ? `<td>${cut.isCrossCut ? (cut.targetRate?.toLocaleString('en-IN') || '-') : '-'}</td>` : ''}
+          ${hasCrossCut ? `<td>${crossCutAmount}</td>` : ''}
         </tr>
       `;
     });

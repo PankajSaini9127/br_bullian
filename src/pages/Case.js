@@ -90,7 +90,7 @@ const Case = () => {
           console.error('Error searching parties:', error);
         }
       }
-    }, 300);
+    }, 1000);
     return () => clearTimeout(debounceTimer);
   }, [partySearchQuery]);
 
@@ -341,12 +341,12 @@ const Case = () => {
                 setPartyId(newValue?._id || '');
                 setPartyName(newValue?.partyName || '');
                 setSelectedParty(newValue);
-              }}
-              onInputChange={(event, newInputValue) => {
-                setPartySearchQuery(newInputValue);
-              }}
-              onBlur={() => {
                 setPartySearchQuery('');
+              }}
+              onInputChange={(event, newInputValue, reason) => {
+                if (reason === 'input') {
+                  setPartySearchQuery(newInputValue);
+                }
               }}
               renderInput={(params) => (
                 <TextField

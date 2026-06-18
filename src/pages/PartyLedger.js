@@ -68,7 +68,7 @@ const PartyLedger = () => {
       } else {
         setPartySearchResults(parties);
       }
-    }, 300);
+    }, 1000);
 
     return () => clearTimeout(debounceTimer);
   }, [partySearchQuery, parties]);
@@ -129,6 +129,9 @@ const PartyLedger = () => {
     if (entry.type === 'incoming') {
       return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
+    if (entry.type === 'crosscut') {
+      return entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
+    }
     return 0;
   };
 
@@ -138,6 +141,9 @@ const PartyLedger = () => {
     }
     if (entry.type === 'sales') {
       return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+    }
+    if (entry.type === 'crosscut') {
+      return entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
     }
     return 0;
   };
@@ -158,9 +164,12 @@ const PartyLedger = () => {
               value={selectedParty}
               onChange={(event, newValue) => {
                 setSelectedParty(newValue);
+                setPartySearchQuery('');
               }}
-              onInputChange={(event, newInputValue) => {
-                setPartySearchQuery(newInputValue);
+              onInputChange={(event, newInputValue, reason) => {
+                if (reason === 'input') {
+                  setPartySearchQuery(newInputValue);
+                }
               }}
               renderInput={(params) => (
                 <TextField
@@ -251,20 +260,20 @@ const PartyLedger = () => {
                       <TableRow key={idx}>
                       <TableCell>{formatDate(entry.date)}</TableCell>
                       <TableCell>
-                        <Chip label={entry.type} size="small" color={entry.type === 'incoming' ? 'primary' : entry.type === 'payment' ? 'success' : 'secondary'} sx={{ mr: 1 }} />
-                        {entry.type === 'payment' ? entry.paymentNo : entry.invoiceNo}
+                        <Chip label={entry.type} size="small" color={entry.type === 'incoming' ? 'primary' : entry.type === 'payment' ? 'success' : entry.type === 'crosscut' ? 'warning' : 'secondary'} sx={{ mr: 1 }} />
+                        {entry.type === 'payment' ? entry.paymentNo : entry.type === 'crosscut' ? `${entry.targetSaudaNo} (${entry.targetSaudaType})` : entry.invoiceNo}
                       </TableCell>
-                      <TableCell>{entry.type === 'payment' ? '-' : (entry.totalFine?.toFixed(2) + ' g')}</TableCell>
+                      <TableCell>{entry.type === 'payment' ? '-' : (entry.type === 'crosscut' ? `${entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0)} g` : (entry.totalFine?.toFixed(2) + ' g'))}</TableCell>
                       <TableCell>
-                        {entry.type === 'payment' 
+                        {entry.type === 'payment'
                           ? (entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : '-')
-                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')
+                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : '-'))
                         }
                       </TableCell>
                       <TableCell>
                         {entry.type === 'payment'
                           ? (entry.paymentType === 'outgoing' ? Math.trunc(entry.amount || 0) : '-')
-                          : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')
+                          : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : '-'))
                         }
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
@@ -277,20 +286,55 @@ const PartyLedger = () => {
                         })()}
                       </TableCell>
                       <TableCell>
-                        {entry.saudaCuts?.length > 0 && (
+                        {(entry.saudaCuts?.length > 0 || entry.type === 'crosscut') && (
                           <IconButton size="small" onClick={(e) => { e.stopPropagation(); toggleRow(idx); }}>
                             {expandedRows[idx] ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
                           </IconButton>
                         )}
                       </TableCell>
                     </TableRow>
-                    {entry.saudaCuts?.length > 0 && (
+                    {(entry.saudaCuts?.length > 0 || entry.type === 'crosscut') && (
                       <TableRow>
                         <TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
                           <Collapse in={expandedRows[idx]}>
                             <Box sx={{ p: 2, background: '#f8fafc' }}>
-                              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Sauda Cuts</Typography>
-                              <Table size="small">
+                              {entry.type === 'crosscut' ? (
+                                <>
+                                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Cross Cut Details</Typography>
+                                  <Grid container spacing={2}>
+                                    {entry.details?.map((detail, i) => (
+                                      <Grid item xs={4} key={i}>
+                                        <Box sx={{ p: 2, background: '#fff', borderRadius: 1, border: '1px solid #e2e8f0', height: '100%' }}>
+                                          <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Source: {detail.sourceSaudaNo} ({detail.sourceSaudaType})</Typography>
+                                          <Grid container spacing={1}>
+                                            <Grid item xs={6}>
+                                              <Typography variant="body2" sx={{ color: '#64748b' }}>Qty:</Typography>
+                                              <Typography variant="body2" sx={{ fontWeight: 600 }}>{detail.crosscutQuantity} g</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="body2" sx={{ color: '#64748b' }}>Source Rate:</Typography>
+                                              <Typography variant="body2" sx={{ fontWeight: 600 }}>₹{detail.sourceRate?.toLocaleString('en-IN')}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="body2" sx={{ color: '#64748b' }}>Target Rate:</Typography>
+                                              <Typography variant="body2" sx={{ fontWeight: 600 }}>₹{detail.targetRate?.toLocaleString('en-IN')}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                              <Typography variant="body2" sx={{ color: '#64748b' }}>P/L:</Typography>
+                                              <Typography variant="body2" sx={{ fontWeight: 600, color: detail.profitLoss >= 0 ? '#10b981' : '#ef4444' }}>
+                                                ₹{detail.profitLoss?.toLocaleString('en-IN')}
+                                              </Typography>
+                                            </Grid>
+                                          </Grid>
+                                        </Box>
+                                      </Grid>
+                                    ))}
+                                  </Grid>
+                                </>
+                              ) : (
+                                <>
+                                  <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Sauda Cuts</Typography>
+                                  <Table size="small">
                                 <TableHead>
                                   <TableRow>
                                     <TableCell>Sauda No</TableCell>
@@ -329,6 +373,8 @@ const PartyLedger = () => {
                                   })}
                                 </TableBody>
                               </Table>
+                                </>
+                              )}
                             </Box>
                           </Collapse>
                         </TableCell>
@@ -351,6 +397,7 @@ const PartyLedger = () => {
                   <TableHead>
                     <TableRow sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' }}>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda No</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Type</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Quantity</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Delivered</TableCell>
@@ -362,6 +409,13 @@ const PartyLedger = () => {
                     {pendingSaudas.map((sauda, i) => (
                       <TableRow key={i}>
                         <TableCell>{sauda.saudaNo}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={sauda.saudaType || '-'} 
+                            size="small" 
+                            color={sauda.saudaType === 'purchase' ? 'primary' : sauda.saudaType === 'sales' ? 'success' : 'default'} 
+                          />
+                        </TableCell>
                         <TableCell>{formatDate(sauda.saudaDate)}</TableCell>
                         <TableCell>{sauda.quantity}</TableCell>
                         <TableCell>{(parseFloat(sauda.delivered) || 0).toFixed(2)}</TableCell>
