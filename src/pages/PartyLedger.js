@@ -132,6 +132,9 @@ const PartyLedger = () => {
     if (entry.type === 'crosscut') {
       return entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
     }
+    if (entry.type === 'sales-return') {
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+    }
     return 0;
   };
 
@@ -144,6 +147,9 @@ const PartyLedger = () => {
     }
     if (entry.type === 'crosscut') {
       return entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
+    }
+    if (entry.type === 'sales-return') {
+      return 0;
     }
     return 0;
   };
@@ -260,20 +266,20 @@ const PartyLedger = () => {
                       <TableRow key={idx}>
                       <TableCell>{formatDate(entry.date)}</TableCell>
                       <TableCell>
-                        <Chip label={entry.type} size="small" color={entry.type === 'incoming' ? 'primary' : entry.type === 'payment' ? 'success' : entry.type === 'crosscut' ? 'warning' : 'secondary'} sx={{ mr: 1 }} />
+                        <Chip label={entry.type} size="small" color={entry.type === 'incoming' ? 'primary' : entry.type === 'payment' ? 'success' : entry.type === 'crosscut' ? 'warning' : entry.type === 'sales-return' ? 'error' : 'secondary'} sx={{ mr: 1 }} />
                         {entry.type === 'payment' ? entry.paymentNo : entry.type === 'crosscut' ? `${entry.targetSaudaNo} (${entry.targetSaudaType})` : entry.invoiceNo}
                       </TableCell>
-                      <TableCell>{entry.type === 'payment' ? '-' : (entry.type === 'crosscut' ? `${entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0)} g` : (entry.totalFine?.toFixed(2) + ' g'))}</TableCell>
+                      <TableCell>{entry.type === 'payment' ? '-' : (entry.type === 'crosscut' ? `${entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0)} g` : (entry.totalFine?.toFixed(1) + ' g'))}</TableCell>
                       <TableCell>
                         {entry.type === 'payment'
                           ? (entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : '-')
-                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : '-'))
+                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : (entry.type === 'sales-return' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')))
                         }
                       </TableCell>
                       <TableCell>
                         {entry.type === 'payment'
                           ? (entry.paymentType === 'outgoing' ? Math.trunc(entry.amount || 0) : '-')
-                          : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : '-'))
+                          : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : (entry.type === 'sales-return' ? '-' : '-')))
                         }
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
@@ -350,16 +356,19 @@ const PartyLedger = () => {
                                 </TableHead>
                                 <TableBody>
                                   {entry.saudaCuts.map((cut, i) => {
+                                    console.log(cut);
                                     const remainingFine = cut.quantity - (cut.delivered || 0);
+
+                                    console.log(remainingFine);
                                     return (
                                       <TableRow key={i}>
                                         <TableCell>{cut.saudaNo}</TableCell>
                                         <TableCell>{formatDate(cut.saudaDate)}</TableCell>
                                         <TableCell>{cut.quantity}</TableCell>
-                                        <TableCell>{(parseFloat(cut.delivered) || 0).toFixed(2)}</TableCell>
+                                        <TableCell>{(parseFloat(cut.delivered) || 0).toFixed(1)}</TableCell>
                                         <TableCell>{cut.rate}</TableCell>
-                                        <TableCell>{(parseFloat(cut.cutFine) || 0).toFixed(2)}</TableCell>
-                                        <TableCell>{remainingFine.toFixed(2)}</TableCell>
+                                        <TableCell>{(parseFloat(cut.cutFine) || 0).toFixed(1)}</TableCell>
+                                        <TableCell>{remainingFine.toFixed(1)}</TableCell>
                                         <TableCell sx={{ fontWeight: 600 }}>{Math.trunc(cut.cutFine * (cut.rate / 1000))}</TableCell>
                                         <TableCell>
                                           {cut.isBhavCut === true ? (
@@ -406,6 +415,7 @@ const PartyLedger = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
+                  {console.log(pendingSaudas)}
                     {pendingSaudas.map((sauda, i) => (
                       <TableRow key={i}>
                         <TableCell>{sauda.saudaNo}</TableCell>
@@ -418,9 +428,9 @@ const PartyLedger = () => {
                         </TableCell>
                         <TableCell>{formatDate(sauda.saudaDate)}</TableCell>
                         <TableCell>{sauda.quantity}</TableCell>
-                        <TableCell>{(parseFloat(sauda.delivered) || 0).toFixed(2)}</TableCell>
+                        <TableCell>{(parseFloat(sauda.delivered) || 0).toFixed(1)}</TableCell>
                         <TableCell>{sauda.rate}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{(parseFloat(sauda.pendingQty) || 0).toFixed(2)}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{((parseFloat(sauda.quantity) || 0) - (parseFloat(sauda.delivered) || 0)).toFixed(1)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

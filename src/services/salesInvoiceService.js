@@ -26,9 +26,12 @@ apiInstance.interceptors.request.use(
 );
 
 // Get available pagga for sale
-async function getAvailablePagga() {
+async function getAvailablePagga(isReturn = false, partyId = '') {
   try {
-    const response = await apiInstance.get('/puggas/for-sale');
+    const params = {};
+    if (isReturn) params.isReturn = true;
+    if (partyId) params.partyId = partyId;
+    const response = await apiInstance.get('/puggas/for-sale', { params });
     console.log('Available Pagga Retrieved:', response?.data?.data);
     return response?.data?.data || [];
   } catch (error) {
@@ -85,6 +88,18 @@ async function markDukanStock(paggaIds) {
   }
 }
 
+// Create return invoice
+async function createReturnInvoice(returnInvoiceData) {
+  try {
+    const response = await apiInstance.post('/sales-invoices/return', returnInvoiceData);
+    console.log('Return Invoice Created:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error Creating Return Invoice:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 // Get dashboard data
 async function getDashboard() {
   try {
@@ -107,4 +122,5 @@ export default {
   updateSalesInvoiceDetails,
   markDukanStock,
   getDashboard,
+  createReturnInvoice,
 };

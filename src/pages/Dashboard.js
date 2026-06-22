@@ -88,8 +88,12 @@ const Dashboard = () => {
         .filter(sauda => sauda.saudaDate === today && sauda.type === 'sales')
         .reduce((sum, sauda) => sum + (parseFloat(sauda.totalAmount) || 0), 0);
 
-      // Total pending sauda (you can define your own logic for pending)
-      const totalPendingSauda = saudaList.length;
+      // Total pending sauda (booked qty - delivered qty)
+      const totalPendingSauda = saudaList.reduce((sum, sauda) => {
+        const bookedQty = parseFloat(sauda.quantity) || 0;
+        const deliveredQty = parseFloat(sauda.deliveredQuantity) || parseFloat(sauda.delivered) || 0;
+        return sum + (bookedQty - deliveredQty);
+      }, 0);
 
       setMetrics({
         todayFineIncoming,
