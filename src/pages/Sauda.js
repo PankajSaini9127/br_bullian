@@ -191,7 +191,7 @@ const Sauda = () => {
         const qtyNum = qty ? parseFloat(qty) : 0;
         const rtNum = rt ? parseFloat(rt) : 0;
         if (!isNaN(qtyNum) && !isNaN(rtNum)) {
-          newData.amount = (qtyNum * (rtNum / 1000)).toFixed(2);
+          newData.amount = (qtyNum * (rtNum / 1000)).toFixed(1);
         }
         return newData;
       });
@@ -259,7 +259,7 @@ const Sauda = () => {
 
     const qty = parseFloat(formData.quantity) || 0;
     const rt = parseFloat(formData.rate) || 0;
-    const totalAmount = (qty * (rt / 1000)).toFixed(2);
+    const totalAmount = (qty * (rt / 1000)).toFixed(1);
 
     const saudaData = {
       partyName: formData.partyName,
@@ -372,7 +372,7 @@ const Sauda = () => {
             </tr>
             <tr>
               <td class="label">Total Amount</td>
-              <td class="value">₹${((parseFloat(sauda.quantity) || 0) * (parseFloat(sauda.rate) || 0) / 1000).toFixed(2)}</td>
+              <td class="value">₹${((parseFloat(sauda.quantity) || 0) * (parseFloat(sauda.rate) || 0) / 1000).toFixed(1)}</td>
             </tr>
             <tr>
               <td class="label">Status</td>
@@ -384,7 +384,7 @@ const Sauda = () => {
             </tr>
             <tr>
               <td class="label">Pending Quantity</td>
-              <td class="value">${(parseFloat(sauda.quantity) - (parseFloat(sauda.delivered) || parseFloat(sauda.deliveredQuantity) || 0)).toFixed(2)} g</td>
+              <td class="value">${(parseFloat(sauda.quantity) - (parseFloat(sauda.delivered) || parseFloat(sauda.deliveredQuantity) || 0)).toFixed(1)} g</td>
             </tr>
           </table>
         </div>
@@ -484,9 +484,9 @@ const Sauda = () => {
     filteredList.forEach((sauda, index) => {
       const qty = parseFloat(sauda.quantity) || 0;
       const rt = parseFloat(sauda.rate) || 0;
-      const amount = (qty * (rt / 1000)).toFixed(2);
+      const amount = (qty * (rt / 1000)).toFixed(1);
       const delivered = parseFloat(sauda.delivered) || parseFloat(sauda.deliveredQuantity) || 0;
-      const pending = (qty - delivered).toFixed(2);
+      const pending = (qty - delivered).toFixed(1);
 
       htmlContent += `
         <tr>
@@ -647,6 +647,7 @@ const Sauda = () => {
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid item xs={12} md={4}>
                 <Autocomplete
+                  sx={{ minWidth: { md: '200px' } }}
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
                   value={parties.find((p) => p._id === searchPartyId) || null}
@@ -763,7 +764,7 @@ const Sauda = () => {
                         {(() => {
                           const qty = parseFloat(String(sauda.quantity).replace(/,/g, '')) || 0;
                           const rt = parseFloat(String(sauda.rate).replace(/,/g, '')) || 0;
-                          const amount = (qty * (rt / 1000)).toFixed(2);
+                          const amount = (qty * (rt / 1000)).toFixed(1);
                           return `₹${parseFloat(amount).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
                         })()}
                       </TableCell>
@@ -905,6 +906,7 @@ const Sauda = () => {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <Autocomplete
                 fullWidth
+                sx={{ minWidth: { md: '200px' } }}
                 options={partySearchQuery ? partySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
                 value={parties.find((p) => p._id === formData.partyId) || null}

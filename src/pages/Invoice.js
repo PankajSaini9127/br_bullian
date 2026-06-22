@@ -848,6 +848,7 @@ const Invoice = () => {
                 <Grid item xs={12} sm={4}>
                   <Autocomplete
                     loading={false}
+                    sx={{ minWidth: { md: '200px' } }}
                     options={partySearchQuery ? partySearchResults : parties}
                     getOptionLabel={(option) => option.partyName || ''}
                     value={parties.find((p) => p._id === filterPartyId) || null}
@@ -1079,6 +1080,7 @@ const Invoice = () => {
                 <Autocomplete
                   loading={false}
                   fullWidth
+                  sx={{ minWidth: { md: '200px' } }}
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
                   value={parties.find(p => p._id === selectedPartyId) || null}
@@ -1558,6 +1560,7 @@ const Invoice = () => {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Autocomplete
               fullWidth
+              sx={{ minWidth: { md: '200px' } }}
               size="small"
               loading={false}
               options={parties}

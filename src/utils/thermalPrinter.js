@@ -72,6 +72,9 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     if (entry.type === 'crosscut') {
       return entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
     }
+    if (entry.type === 'sales-return') {
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+    }
     return 0;
   };
 
@@ -84,6 +87,9 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     }
     if (entry.type === 'crosscut') {
       return entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : 0;
+    }
+    if (entry.type === 'sales-return') {
+      return 0;
     }
     return 0;
   };
@@ -111,7 +117,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
         .ledger-header h2 { margin: 0; font-size: 13px; font-weight: normal; }
         .ledger-header .sub { margin: 2px 0 0; font-size: 9px; color: #333; }
         .ledger-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-        .ledger-table th, .ledger-table td { border: 1px solid #333; padding: 2px 4px; text-align: left; vertical-align: top; }
+        .ledger-table th, .ledger-table td { border: 1px dotted #ccc; padding: 2px 4px; text-align: left; vertical-align: top; }
         .ledger-table th { font-weight: normal; background: none; font-size: 9px; }
         .ledger-table td { font-size: 9px; }
         .ledger-table .num { text-align: right; }
@@ -136,6 +142,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
         <thead>
           <tr>
             <th style="width:40px;">Date</th>
+            <th style="width:80px;">Type</th>
             <th>Particulars</th>
             <th style="width:50px;" class="num">Fine (g)</th>
             <th style="width:60px;" class="num">Debit (&#8377;)</th>
@@ -146,6 +153,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
         <tbody>
           <tr class="opening-row">
             <td class="center">-</td>
+            <td>-</td>
             <td>Opening Balance</td>
             <td class="num">-</td>
             <td class="num">${openingDebit || ''}</td>
@@ -154,81 +162,117 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
           </tr>
   `;
 
-  entries.forEach((entry) => {
-    const date = formatDate(entry.date);
-    const debit = getDebitAmount(entry);
-    const credit = getCreditAmount(entry);
-    totalDebit += debit;
-    totalCredit += credit;
-    runningBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
+  // Group entries by type
+  const entriesByType = {
+    payment: entries.filter(e => e.type === 'payment'),
+    incoming: entries.filter(e => e.type === 'incoming'),
+    sales: entries.filter(e => e.type === 'sales'),
+    'sales-return': entries.filter(e => e.type === 'sales-return'),
+    crosscut: entries.filter(e => e.type === 'crosscut'),
+  };
 
-    let particulars = '';
-    let fineStr = '-';
+  const typeLabels = {
+    payment: 'PAYMENTS',
+    incoming: 'PURCHASE INVOICES',
+    sales: 'SALES INVOICES',
+    'sales-return': 'SALES RETURN INVOICES',
+    crosscut: 'CROSS CUTS',
+  };
 
+  const getTypeLabel = (entry) => {
     if (entry.type === 'payment') {
-      particulars = (entry.paymentType === 'incoming' ? 'Payment In' : 'Payment Out') +
-        (entry.paymentNo ? ' - ' + entry.paymentNo : '');
-      fineStr = '-';
+      return entry.paymentType === 'incoming' ? 'Payment' : 'Payment Outgoing';
     } else if (entry.type === 'incoming') {
-      particulars = 'Purchase' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
-      if (entry.saudaCuts?.length > 0) {
-        const saudaNos = entry.saudaCuts.map(c => c.saudaNo).filter(Boolean).join(', ');
-        if (saudaNos) particulars += ' (' + saudaNos + ')';
-      }
-      fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+      return 'Purchase Invoice';
     } else if (entry.type === 'sales') {
-      particulars = 'Sales' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
-      if (entry.saudaCuts?.length > 0) {
-        const saudaNos = entry.saudaCuts.map(c => c.saudaNo).filter(Boolean).join(', ');
-        if (saudaNos) particulars += ' (' + saudaNos + ')';
-      }
-      fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+      return 'Sales Invoice';
+    } else if (entry.type === 'sales-return') {
+      return 'Sales Return';
     } else if (entry.type === 'crosscut') {
-      particulars = 'Cross Cut: ' + (entry.targetSaudaNo || '-') + ' (' + (entry.targetSaudaType || '-') + ')';
-      fineStr = entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0) + ' g';
+      return 'Cross Cut';
     }
+    return '-';
+  };
 
-    htmlContent += `
+  // Function to render entries for a specific type
+  const renderEntriesByType = (typeEntries, type) => {
+    if (typeEntries.length === 0) return '';
+    
+    let typeHtml = `
+      
+    `;
+
+    typeEntries.forEach((entry) => {
+      const date = formatDate(entry.date);
+      const debit = getDebitAmount(entry);
+      const credit = getCreditAmount(entry);
+      totalDebit += debit;
+      totalCredit += credit;
+      runningBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
+
+      let particulars = '';
+      let fineStr = '-';
+
+      if (entry.type === 'payment') {
+        particulars = (entry.paymentType === 'incoming' ? 'Payment In' : 'Payment Out') +
+          (entry.paymentNo ? ' - ' + entry.paymentNo : '');
+        fineStr = '-';
+      } else if (entry.type === 'incoming') {
+        particulars = 'Purchase' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
+        fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+      } else if (entry.type === 'sales') {
+        particulars = 'Sales' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
+        fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+      } else if (entry.type === 'sales-return') {
+        particulars = 'Sales Return' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
+        fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+      } else if (entry.type === 'crosscut') {
+        particulars = 'Cross Cut: ' + (entry.targetSaudaNo || '-') + ' (' + (entry.targetSaudaType || '-') + ')';
+        fineStr = entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0) + ' g';
+      }
+
+      typeHtml += `
           <tr>
             <td class="center">${date}</td>
+            <td>${getTypeLabel(entry)}</td>
             <td>${particulars}</td>
             <td class="num">${fineStr}</td>
             <td class="num">${debit || ''}</td>
             <td class="num">${credit || ''}</td>
             <td class="num bold">${runningBal}</td>
           </tr>
-    `;
+      `;
 
-    // Add crosscut details row if it's a crosscut entry
-    if (entry.type === 'crosscut' && entry.details?.length > 0) {
-      entry.details.forEach((detail) => {
-        htmlContent += `
-          <tr>
-            <td colspan="6" style="padding: 2px 8px; background: #f9f9f9; font-size: 8px;">
-              <strong>Source:</strong> ${detail.sourceSaudaNo || '-'} (${detail.sourceSaudaType || '-'}) | 
-              <strong>Qty:</strong> ${detail.crosscutQuantity || '-'}g | 
-              <strong>Source Rate:</strong> ₹${detail.sourceRate?.toLocaleString('en-IN') || '-'} | 
-              <strong>Target Rate:</strong> ₹${detail.targetRate?.toLocaleString('en-IN') || '-'} | 
-              <strong>P/L:</strong> ₹${detail.profitLoss?.toLocaleString('en-IN') || '-'}
-            </td>
-          </tr>
-        `;
-      });
-    }
+      // Add crosscut details row if it's a crosscut entry
+      if (entry.type === 'crosscut' && entry.details?.length > 0) {
+        entry.details.forEach((detail) => {
+          typeHtml += `
+            <tr>
+              <td colspan="7" style="padding: 2px 8px; background: #f9f9f9; font-size: 8px;">
+                <strong>Source:</strong> ${detail.sourceSaudaNo || '-'} (${detail.sourceSaudaType || '-'}) | 
+                <strong>Qty:</strong> ${detail.crosscutQuantity || '-'}g | 
+                <strong>Source Rate:</strong> ₹${detail.sourceRate?.toLocaleString('en-IN') || '-'} | 
+                <strong>Target Rate:</strong> ₹${detail.targetRate?.toLocaleString('en-IN') || '-'} | 
+                <strong>P/L:</strong> ₹${detail.profitLoss?.toLocaleString('en-IN') || '-'}
+              </td>
+            </tr>
+          `;
+        });
+      }
 
-    // Add sauda cuts details under each invoice entry
-    if ((entry.type === 'incoming' || entry.type === 'sales') && entry.saudaCuts?.length > 0) {
-      const hasCrossCut = entry.saudaCuts.some(c => c.isCrossCut);
-      entry.saudaCuts.forEach((cut) => {
-        const amount = cut.cutFine && cut.rate ? (cut.cutFine * cut.rate / 1000).toFixed(0) : '-';
-        const crossCutAmount = cut.isCrossCut && cut.crosscutQuantity && cut.rate 
-          ? (cut.crosscutQuantity * cut.rate / 1000).toFixed(0) 
-          : '-';
-        const saudaDate = cut.saudaDate ? new Date(cut.saudaDate).toLocaleDateString('en-GB') : '-';
-        htmlContent += `
-          <tr>
-            <td colspan="6" style="padding: 2px 8px; background: #fafafa; font-size: 8px;">
-             <strong> Sauda No:</strong> ${cut.saudaNo || '-'} | 
+      // Add sauda cuts details under each invoice entry
+      if ((entry.type === 'incoming' || entry.type === 'sales' || entry.type === 'sales-return') && entry.saudaCuts?.length > 0) {
+        const hasCrossCut = entry.saudaCuts.some(c => c.isCrossCut);
+        entry.saudaCuts.forEach((cut) => {
+          const amount = cut.cutFine && cut.rate ? (cut.cutFine * cut.rate / 1000).toFixed(0) : '-';
+          const crossCutAmount = cut.isCrossCut && cut.crosscutQuantity && cut.rate 
+            ? (cut.crosscutQuantity * cut.rate / 1000).toFixed(0) 
+            : '-';
+          const saudaDate = cut.saudaDate ? new Date(cut.saudaDate).toLocaleDateString('en-GB') : '-';
+          typeHtml += `
+            <tr>
+              <td colspan="7" style="padding: 2px 8px; background: #fafafa; font-size: 8px;">
+               <strong> Sauda No:</strong> ${cut.saudaNo || '-'} | 
               <strong>Date:</strong> ${saudaDate} | 
               <strong>Booking:</strong> ${cut.quantity?.toFixed(2) || '-'}g | 
               <strong>Rate:</strong> ₹${cut.rate?.toFixed(2) || '-'} | 
@@ -241,18 +285,28 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
             </td>
           </tr>
         `;
-      });
-    }
-  });
+        });
+      }
+    });
+
+    return typeHtml;
+  };
+
+  // Render all entries by type
+  htmlContent += renderEntriesByType(entriesByType.payment, 'payment');
+  htmlContent += renderEntriesByType(entriesByType.incoming, 'incoming');
+  htmlContent += renderEntriesByType(entriesByType.sales, 'sales');
+  htmlContent += renderEntriesByType(entriesByType['sales-return'], 'sales-return');
+  htmlContent += renderEntriesByType(entriesByType.crosscut, 'crosscut');
 
   const closingBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
 
   htmlContent += `
           <tr class="totals-row">
-            <td colspan="3" class="center">Closing Balance</td>
+            <td colspan="4" class="center">Closing Balance</td>
             <td class="num">${openingDebit + totalDebit}</td>
             <td class="num">${openingCredit + totalCredit}</td>
-            <td class="num">${closingBal}</td>
+            <td class="num">${closingBal !== 0 ? (closingBal > 0 ? closingBal + ' (dena hai)' : closingBal + ' (lena hai)') : closingBal}</td>
           </tr>
         </tbody>
       </table>

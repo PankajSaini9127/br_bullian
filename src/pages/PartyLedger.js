@@ -165,6 +165,7 @@ const PartyLedger = () => {
           <Grid item xs={12} md={4}>
             <Autocomplete
               fullWidth
+              sx={{ minWidth: { md: '200px' } }}
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
               value={selectedParty}
@@ -447,7 +448,10 @@ const PartyLedger = () => {
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>Balance</Typography>
-                  <Typography variant="h6" sx={{ fontWeight: 700, color: (totalDebit - totalCredit) < 0 ? '#ef4444' : '#10b981' }}>{Math.trunc(totalDebit - totalCredit)}</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700, color: (totalDebit - totalCredit) < 0 ? '#ef4444' : '#10b981' }}>{(() => {
+                          const bal = Math.trunc(totalDebit - totalCredit);
+                          return bal !== 0 ? (bal > 0 ? bal + ' (dena hai)' : bal + ' (lena hai)') : bal;
+                        })()}</Typography>
                 </Grid>
               </Grid>
             </Box>

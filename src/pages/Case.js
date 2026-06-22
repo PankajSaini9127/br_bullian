@@ -333,6 +333,7 @@ const Case = () => {
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Autocomplete
               fullWidth
+              sx={{ minWidth: { md: '200px' } }}
               size="small"
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}

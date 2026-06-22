@@ -945,6 +945,7 @@ const SalesInvoice = () => {
           <Grid item xs={12} md={4}>
             <Autocomplete
               fullWidth
+              sx={{ minWidth: { md: '200px' } }}
               loading={false}
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
@@ -1060,7 +1061,7 @@ const SalesInvoice = () => {
             <Grid item md={4}>
               <Autocomplete
                 loading={false}
-                sx={{ minWidth: 250 }}
+                sx={{ minWidth: { md: '200px' } }}
                 options={filterPartySearchQuery ? filterPartySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
                 value={parties.find(p => p._id === filterParty) || null}
@@ -1228,6 +1229,7 @@ const SalesInvoice = () => {
               <Grid item xs={12} md={6}>
                 <Autocomplete
                   fullWidth
+                  sx={{ minWidth: { md: '200px' } }}
                   loading={false}
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
@@ -1512,6 +1514,7 @@ const SalesInvoice = () => {
                 <Autocomplete
                   loading={false}
                   fullWidth
+                  sx={{ minWidth: { md: '200px' } }}
                   size="small"
                   options={filterPartySearchQuery ? filterPartySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
@@ -1826,6 +1829,7 @@ const SalesInvoice = () => {
               <Autocomplete
                 loading={false}
                 fullWidth
+                sx={{ minWidth: { md: '200px' } }}
                 size="small"
                 options={editPartySearchQuery ? editPartySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
