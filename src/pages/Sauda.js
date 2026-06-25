@@ -718,6 +718,7 @@ const Sauda = () => {
                 <TableHead>
                   <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Type</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda Date</TableCell>
@@ -740,6 +741,7 @@ const Sauda = () => {
                       }}
                     >
                       <TableCell sx={{ fontWeight: 600 }}>{(page - 1) * limit + index + 1}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{sauda.saudaNo || 'SAUDA-' + String(sauda.id).padStart(4, '0')}</TableCell>
                       <TableCell>{sauda?.partyId?.partyName || "-"}</TableCell>
                       <TableCell>
                         <Chip

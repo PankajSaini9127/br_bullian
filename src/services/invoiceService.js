@@ -67,6 +67,17 @@ async function updateInvoiceDetails(id, invoiceData) {
   }
 }
 
+async function getAvailablePagga(partyId = '') {
+  try {
+    const response = await apiInstance.get(`/puggas/party/${partyId}`);
+    console.log('Available Pagga Retrieved:', response?.data?.data);
+    return response?.data?.data || [];
+  } catch (error) {
+    console.error('Error Retrieving Available Pagga:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 // Show the BR logo loader while requests are in flight
 attachLoaderInterceptors(apiInstance);
 
@@ -74,5 +85,6 @@ export default {
   createInvoice,
   getInvoices,
   deleteInvoice,
-  updateInvoiceDetails
+  updateInvoiceDetails,
+  getAvailablePagga,
 };

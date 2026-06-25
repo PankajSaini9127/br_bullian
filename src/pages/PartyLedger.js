@@ -80,7 +80,8 @@ const PartyLedger = () => {
       const response = await partyService.getPartyLedger(selectedParty._id, startDate, endDate);
       const data = response?.data || response;
 
-      console.log(data)
+      console.log('Ledger data:', data)
+      console.log('Entries:', data?.entries)
       setLedgerData(data);
       toast.dismiss(toastId);
       toast.success('Ledger loaded successfully');
@@ -126,7 +127,11 @@ const PartyLedger = () => {
     if (entry.type === 'payment') {
       return entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : 0;
     }
-    if (entry.type === 'incoming') {
+    if (entry.type === 'Purchase') {
+      // Use amount field, if not available calculate from sauda crosscut
+      if (entry.amount) {
+        return Math.trunc(entry.amount);
+      }
       return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
     if (entry.type === 'crosscut') {
@@ -150,6 +155,18 @@ const PartyLedger = () => {
     }
     if (entry.type === 'sales-return') {
       return 0;
+    }
+    if (entry.type === 'Purchase Return') {
+      console.log('Purchase Return entry:', entry);
+      console.log('Amount:', entry.amount);
+      console.log('SaudaCuts:', entry.saudaCuts);
+      // Use amount field, if not available calculate from sauda crosscut
+      if (entry.amount) {
+        return Math.trunc(entry.amount);
+      }
+      const calculated = entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
+      console.log('Calculated from saudaCuts:', calculated);
+      return calculated;
     }
     return 0;
   };
@@ -267,20 +284,20 @@ const PartyLedger = () => {
                       <TableRow key={idx}>
                       <TableCell>{formatDate(entry.date)}</TableCell>
                       <TableCell>
-                        <Chip label={entry.type} size="small" color={entry.type === 'incoming' ? 'primary' : entry.type === 'payment' ? 'success' : entry.type === 'crosscut' ? 'warning' : entry.type === 'sales-return' ? 'error' : 'secondary'} sx={{ mr: 1 }} />
+                        <Chip label={entry.type} size="small" color={entry.type === 'Purchase' ? 'primary' : entry.type === 'Purchase Return' ? 'warning' : entry.type === 'payment' ? 'success' : entry.type === 'crosscut' ? 'info' : entry.type === 'sales-return' ? 'error' : 'secondary'} sx={{ mr: 1 }} />
                         {entry.type === 'payment' ? entry.paymentNo : entry.type === 'crosscut' ? `${entry.targetSaudaNo} (${entry.targetSaudaType})` : entry.invoiceNo}
                       </TableCell>
                       <TableCell>{entry.type === 'payment' ? '-' : (entry.type === 'crosscut' ? `${entry.details?.reduce((sum, d) => sum + (d.crosscutQuantity || 0), 0)} g` : (entry.totalFine?.toFixed(1) + ' g'))}</TableCell>
                       <TableCell>
                         {entry.type === 'payment'
                           ? (entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : '-')
-                          : (entry.type === 'incoming' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : (entry.type === 'sales-return' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')))
+                          : (entry.type === 'Purchase' ? (entry.amount || entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'debit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : (entry.type === 'sales-return' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : '-')))
                         }
                       </TableCell>
                       <TableCell>
                         {entry.type === 'payment'
                           ? (entry.paymentType === 'outgoing' ? Math.trunc(entry.amount || 0) : '-')
-                          : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : (entry.type === 'sales-return' ? '-' : '-')))
+                          : (entry.type === 'Purchase Return' ? (entry.amount || entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'sales' ? (entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0) : (entry.type === 'crosscut' ? (entry.creditDebitType === 'credit' ? Math.trunc(entry.totalProfitLoss || 0) : '-') : (entry.type === 'sales-return' ? '-' : '-'))))
                         }
                       </TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>

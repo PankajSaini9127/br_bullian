@@ -66,7 +66,11 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     if (entry.type === 'payment') {
       return entry.paymentType === 'incoming' ? Math.trunc(entry.amount || 0) : 0;
     }
-    if (entry.type === 'incoming') {
+    if (entry.type === 'Purchase') {
+      // Use amount field, if not available calculate from sauda crosscut
+      if (entry.amount) {
+        return Math.trunc(entry.amount);
+      }
       return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
     if (entry.type === 'crosscut') {
@@ -90,6 +94,13 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     }
     if (entry.type === 'sales-return') {
       return 0;
+    }
+    if (entry.type === 'Purchase Return') {
+      // Use amount field, if not available calculate from sauda crosscut
+      if (entry.amount) {
+        return Math.trunc(entry.amount);
+      }
+      return entry.saudaCuts?.reduce((s, c) => s + Math.trunc(c.cutFine * c.rate / 1000), 0) || 0;
     }
     return 0;
   };
@@ -165,7 +176,8 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
   // Group entries by type
   const entriesByType = {
     payment: entries.filter(e => e.type === 'payment'),
-    incoming: entries.filter(e => e.type === 'incoming'),
+    Purchase: entries.filter(e => e.type === 'Purchase'),
+    'Purchase Return': entries.filter(e => e.type === 'Purchase Return'),
     sales: entries.filter(e => e.type === 'sales'),
     'sales-return': entries.filter(e => e.type === 'sales-return'),
     crosscut: entries.filter(e => e.type === 'crosscut'),
@@ -173,7 +185,8 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
 
   const typeLabels = {
     payment: 'PAYMENTS',
-    incoming: 'PURCHASE INVOICES',
+    Purchase: 'PURCHASE INVOICES',
+    'Purchase Return': 'PURCHASE RETURN INVOICES',
     sales: 'SALES INVOICES',
     'sales-return': 'SALES RETURN INVOICES',
     crosscut: 'CROSS CUTS',
@@ -182,8 +195,10 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
   const getTypeLabel = (entry) => {
     if (entry.type === 'payment') {
       return entry.paymentType === 'incoming' ? 'Payment' : 'Payment Outgoing';
-    } else if (entry.type === 'incoming') {
-      return 'Purchase Invoice';
+    } else if (entry.type === 'Purchase') {
+      return 'Purchase';
+    } else if (entry.type === 'Purchase Return') {
+      return 'Purchase Return';
     } else if (entry.type === 'sales') {
       return 'Sales Invoice';
     } else if (entry.type === 'sales-return') {
@@ -217,8 +232,11 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
         particulars = (entry.paymentType === 'incoming' ? 'Payment In' : 'Payment Out') +
           (entry.paymentNo ? ' - ' + entry.paymentNo : '');
         fineStr = '-';
-      } else if (entry.type === 'incoming') {
+      } else if (entry.type === 'Purchase') {
         particulars = 'Purchase' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
+        fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
+      } else if (entry.type === 'Purchase Return') {
+        particulars = 'Purchase Return' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
         fineStr = entry.totalFine ? Math.trunc(entry.totalFine) + ' g' : '-';
       } else if (entry.type === 'sales') {
         particulars = 'Sales' + (entry.invoiceNo ? ' - ' + entry.invoiceNo : '');
@@ -261,7 +279,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
       }
 
       // Add sauda cuts details under each invoice entry
-      if ((entry.type === 'incoming' || entry.type === 'sales' || entry.type === 'sales-return') && entry.saudaCuts?.length > 0) {
+      if ((entry.type === 'Purchase' || entry.type === 'Purchase Return' || entry.type === 'sales' || entry.type === 'sales-return') && entry.saudaCuts?.length > 0) {
         const hasCrossCut = entry.saudaCuts.some(c => c.isCrossCut);
         entry.saudaCuts.forEach((cut) => {
           const amount = cut.cutFine && cut.rate ? (cut.cutFine * cut.rate / 1000).toFixed(0) : '-';
@@ -294,7 +312,8 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
 
   // Render all entries by type
   htmlContent += renderEntriesByType(entriesByType.payment, 'payment');
-  htmlContent += renderEntriesByType(entriesByType.incoming, 'incoming');
+  htmlContent += renderEntriesByType(entriesByType.Purchase, 'Purchase');
+  htmlContent += renderEntriesByType(entriesByType['Purchase Return'], 'Purchase Return');
   htmlContent += renderEntriesByType(entriesByType.sales, 'sales');
   htmlContent += renderEntriesByType(entriesByType['sales-return'], 'sales-return');
   htmlContent += renderEntriesByType(entriesByType.crosscut, 'crosscut');
@@ -331,13 +350,14 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
           <tbody>
     `;
     pendingSaudas.forEach((s) => {
+      const pendingQty = ((parseFloat(s.quantity) || 0) - (parseFloat(s.delivered) || 0)).toFixed(1);
       htmlContent += `
             <tr>
               <td>${s.saudaNo || '-'}</td>
               <td>${s.saudaType || '-'}</td>
               <td class="num">${s.quantity || '-'}</td>
               <td class="num">${s.delivered || '-'}</td>
-              <td class="num">${s.pendingQty || '-'}</td>
+              <td class="num">${pendingQty || '-'}</td>
               <td class="num">${s.rate || '-'}</td>
             </tr>
       `;

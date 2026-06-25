@@ -30,6 +30,8 @@ import {
   Collapse,
   Tooltip,
   Stack,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -42,6 +44,7 @@ import {
   KeyboardArrowDown as ExpandMoreIcon,
   KeyboardArrowUp as ExpandLessIcon,
   Bluetooth as BluetoothIcon,
+  AssignmentReturn as AssignmentReturnIcon,
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -89,6 +92,16 @@ const Invoice = () => {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [returnModalOpen, setReturnModalOpen] = useState(false);
+  const [returnInvoice, setReturnInvoice] = useState(null);
+  const [returnItems, setReturnItems] = useState([]);
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [returnPartyId, setReturnPartyId] = useState('');
+  const [returnPartyName, setReturnPartyName] = useState('');
+  const [returnCheckedPagga, setReturnCheckedPagga] = useState({});
+  const [returnSelectAll, setReturnSelectAll] = useState(false);
+  const [returnAvailablePagga, setReturnAvailablePagga] = useState([]);
+  const [returnInvoiceDate, setReturnInvoiceDate] = useState('');
 
   useEffect(() => {
     const fetchParties = async () => {
@@ -382,6 +395,137 @@ const Invoice = () => {
       console.error('Error updating invoice:', error);
       toast.dismiss(toastId);
       toast.error('Failed to update invoice. Please try again.');
+    }
+  };
+
+  // Return functions
+  const handleReturnInvoice = async (invoice) => {
+    setReturnInvoice(invoice);
+    setReturnItems(invoice.items?.map(item => ({
+      ...item,
+      returnQuantity: item.weight,
+      returnTouch: item.touch,
+      returnFine: item.weight * item.touch / 100
+    })) || []);
+    setReturnModalOpen(true);
+  };
+
+  const handleOpenReturnForm = async () => {
+    setShowReturnForm(true);
+    setReturnPartyId('');
+    setReturnPartyName('');
+    setReturnCheckedPagga({});
+    setReturnSelectAll(false);
+    setReturnInvoiceDate(new Date().toISOString().split('T')[0]);
+    setReturnAvailablePagga([]);
+  };
+
+  const handleReturnFromInvoice = async (invoice) => {
+    setShowReturnForm(true);
+    setReturnPartyId(invoice.partyId?._id || invoice.partyId);
+    setReturnPartyName(invoice.partyId?.partyName || invoice.partyName || '');
+    setReturnCheckedPagga({});
+    setReturnSelectAll(false);
+    setReturnInvoiceDate(new Date().toISOString().split('T')[0]);
+    setReturnAvailablePagga([]);
+    if (invoice.partyId?._id || invoice.partyId) {
+      try {
+        const response = await invoiceService.getAvailablePagga(invoice.partyId?._id || invoice.partyId);
+        setReturnAvailablePagga(response?.puggas || []);
+      } catch (error) {
+        console.error('Error fetching available pagga:', error);
+        setReturnAvailablePagga([]);
+      }
+    }
+  };
+
+  const handleCloseReturnForm = () => {
+    setShowReturnForm(false);
+    setReturnPartyId('');
+    setReturnPartyName('');
+    setReturnCheckedPagga({});
+    setReturnSelectAll(false);
+    setReturnAvailablePagga([]);
+  };
+
+  const getReturnTotalFine = () => {
+    return returnAvailablePagga.reduce((total, pagga) => {
+      if (returnCheckedPagga[pagga._id]) {
+        return total + (parseFloat(pagga.fine) || 0);
+      }
+      return total;
+    }, 0).toFixed(2);
+  };
+
+  const handleReturnSelectAll = (event) => {
+    const isChecked = event.target.checked;
+    setReturnSelectAll(isChecked);
+    const newCheckedPagga = {};
+    returnAvailablePagga.forEach(pagga => {
+      newCheckedPagga[pagga._id] = isChecked;
+    });
+    setReturnCheckedPagga(newCheckedPagga);
+  };
+
+  const handleReturnPaggaToggle = (paggaId) => {
+    setReturnCheckedPagga(prev => ({
+      ...prev,
+      [paggaId]: !prev[paggaId]
+    }));
+    setReturnSelectAll(false);
+  };
+
+  const handleCloseReturnModal = () => {
+    setReturnModalOpen(false);
+    setReturnInvoice(null);
+    setReturnItems([]);
+  };
+
+  const handleReturnQuantityChange = (index, value) => {
+    const updatedItems = [...returnItems];
+    updatedItems[index].returnQuantity = value;
+    updatedItems[index].returnFine = value * updatedItems[index].returnTouch / 100;
+    setReturnItems(updatedItems);
+  };
+
+  const handleSaveReturnInvoice = async () => {
+    const toastId = toast.loading('Creating return invoice...');
+    try {
+      const selectedPaggaIds = Object.keys(returnCheckedPagga).filter(id => returnCheckedPagga[id]);
+
+      if (selectedPaggaIds.length === 0) {
+        toast.dismiss(toastId);
+        toast.error('Please select at least one pagga');
+        return;
+      }
+
+      const returnInvoiceData = {
+        isReturn: true,
+        partyId: returnPartyId,
+        invoiceDate: returnInvoiceDate,
+        puggaIds: selectedPaggaIds,
+      };
+
+      await invoiceService.createInvoice(returnInvoiceData);
+
+      const params = {
+        page,
+        limit,
+      };
+      if (filterStartDate) params.startDate = filterStartDate;
+      if (filterEndDate) params.endDate = filterEndDate;
+      if (filterPartyId) params.partyId = filterPartyId;
+
+      const response = await invoiceService.getInvoices(params);
+      setInvoices(response?.invoices || response || []);
+
+      handleCloseReturnForm();
+      toast.dismiss(toastId);
+      toast.success('Return invoice created successfully');
+    } catch (error) {
+      console.error('Error creating return invoice:', error);
+      toast.dismiss(toastId);
+      toast.error('Failed to create return invoice');
     }
   };
 
@@ -766,24 +910,6 @@ const Invoice = () => {
       {/* Invoice List - Show by default */}
       {!showAddForm && (
         <>
-          <Box sx={{ mb: 3 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleShowAddForm}
-              sx={{
-                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
-                '&:hover': {
-                  background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
-                  boxShadow: '0 6px 16px rgba(99, 102, 241, 0.5)',
-                },
-              }}
-            >
-              Add Invoice
-            </Button>
-          </Box>
-
           {/* Invoice List */}
           {invoices.length > 0 ? (
             <Paper
@@ -795,9 +921,44 @@ const Invoice = () => {
                 border: '1px solid #e2e8f0',
               }}
             >
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#424242' }}>
-                Invoice List
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: '#424242' }}>
+                  Invoice List
+                </Typography>
+                <Box>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    onClick={handleShowAddForm}
+                    sx={{
+                      background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                      boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                        boxShadow: '0 6px 16px rgba(99, 102, 241, 0.5)',
+                      },
+                    }}
+                  >
+                    Add Invoice
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<AssignmentReturnIcon />}
+                    onClick={handleOpenReturnForm}
+                    sx={{
+                      ml: 2,
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                        boxShadow: '0 6px 16px rgba(245, 158, 11, 0.5)',
+                      },
+                    }}
+                  >
+                    Return Invoice
+                  </Button>
+                </Box>
+              </Box>
 
               {/* Filters */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -913,6 +1074,7 @@ const Invoice = () => {
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Invoice No</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Type</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Items</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Gross Weight (g)</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Fine (g)</TableCell>
@@ -935,6 +1097,17 @@ const Invoice = () => {
                         <TableCell sx={{ fontWeight: 600 }}>{invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0')}</TableCell>
                         <TableCell>{invoice?.partyId?.partyName || '-'}</TableCell>
                         <TableCell>{invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-'}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={invoice.isReturn ? 'Return' : 'Purchase'}
+                            size="small"
+                            sx={{
+                              bgcolor: invoice.isReturn ? '#fef3c7' : '#dbeafe',
+                              color: invoice.isReturn ? '#92400e' : '#1e40af',
+                              fontWeight: 600,
+                            }}
+                          />
+                        </TableCell>
                         <TableCell>
                           <Chip
                             label={invoice.items?.length || 0}
@@ -1724,6 +1897,220 @@ const Invoice = () => {
             }}
           >
             Update Invoice
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Return Form Modal */}
+      <Dialog open={showReturnForm} onClose={handleCloseReturnForm} maxWidth="lg" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
+        <DialogTitle>Purchase Return Invoice</DialogTitle>
+        <DialogContent>
+          {/* Total Fine Display */}
+          <Box
+            sx={{
+              mb: 3,
+              p: 3,
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              borderRadius: 2,
+              color: '#fff',
+            }}
+          >
+            <Typography variant="body2" sx={{ mb: 1, opacity: 0.9 }}>
+              Total Fine of Selected Pagga
+            </Typography>
+            <Typography variant="h3" sx={{ fontWeight: 700 }}>
+              {getReturnTotalFine()} g
+            </Typography>
+          </Box>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <Autocomplete
+                loading={false}
+                sx={{ minWidth: { md: '200px' } }}
+                options={partySearchQuery ? partySearchResults : parties}
+                getOptionLabel={(option) => option.partyName || ''}
+                value={parties.find(p => p._id === returnPartyId) || null}
+                onChange={(event, newValue) => {
+                  setReturnPartyId(newValue?._id || '');
+                  setReturnPartyName(newValue?.partyName || '');
+                  setReturnCheckedPagga({});
+                  setReturnSelectAll(false);
+                  if (newValue?._id) {
+                    invoiceService.getAvailablePagga(newValue._id)
+                      .then(response => setReturnAvailablePagga(response?.puggas || []))
+                      .catch(error => {
+                        console.error('Error fetching available pagga:', error);
+                        setReturnAvailablePagga([]);
+                      });
+                  } else {
+                    setReturnAvailablePagga([]);
+                  }
+                }}
+                onInputChange={(event, newInputValue, reason) => {
+                  if (reason === 'input') {
+                    setPartySearchQuery(newInputValue);
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Party Name"
+                    size="small"
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        '&:hover fieldset': {
+                          borderColor: '#818cf8',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#6366f1',
+                          borderWidth: 2,
+                        },
+                      },
+                    }}
+                  />
+                )}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Invoice Date"
+                type="date"
+                value={returnInvoiceDate}
+                onChange={(e) => setReturnInvoiceDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    '&:hover fieldset': {
+                      borderColor: '#818cf8',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#6366f1',
+                      borderWidth: 2,
+                    },
+                  },
+                }}
+              />
+            </Grid>
+          </Grid>
+
+          {returnAvailablePagga.length > 0 && (
+            <>
+              <Typography
+                variant="h6"
+                sx={{
+                  mt: 4,
+                  mb: 2,
+                  fontWeight: 700,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Available Pagga for Return
+              </Typography>
+
+              <Box sx={{ mb: 2 }}>
+                <Grid container spacing={2} alignItems="center">
+                  <Grid item>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={returnSelectAll}
+                          onChange={handleReturnSelectAll}
+                          sx={{
+                            color: '#f59e0b',
+                            '&.Mui-checked': {
+                              color: '#f59e0b',
+                            },
+                          }}
+                        />
+                      }
+                      label="Select All"
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <TableContainer component={Paper} elevation={1}>
+                <Table>
+                  <TableHead>
+                    <TableRow sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={returnSelectAll}
+                          onChange={handleReturnSelectAll}
+                          sx={{
+                            color: '#fff',
+                            '&.Mui-checked': {
+                              color: '#fff',
+                            },
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Touch (%)</TableCell>
+                      <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Fine (g)</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {returnAvailablePagga.map((pagga, index) => (
+                      <TableRow
+                        key={pagga._id}
+                        sx={{
+                          '&:hover': {
+                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                          },
+                        }}
+                      >
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={returnCheckedPagga[pagga._id] || false}
+                            onChange={() => handleReturnPaggaToggle(pagga._id)}
+                            sx={{
+                              color: '#f59e0b',
+                              '&.Mui-checked': {
+                                color: '#f59e0b',
+                              },
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
+                        <TableCell>{pagga.paggaNo}</TableCell>
+                        <TableCell>{pagga.weight}</TableCell>
+                        <TableCell>{pagga.touch}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>
+                          {pagga.fine}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button onClick={handleCloseReturnForm} sx={{ color: '#6366f1' }}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveReturnInvoice}
+            variant="contained"
+            sx={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+              },
+            }}
+          >
+            Create Return Invoice
           </Button>
         </DialogActions>
       </Dialog>
