@@ -78,7 +78,6 @@ const Sauda = () => {
     rate: '',
     saudaType: 'purchase',
     isCrossCut: false,
-    status: 'Pending',
     deliveredQuantity: '',
   });
 
@@ -211,7 +210,6 @@ const Sauda = () => {
       rate: '',
       amount: '',
       saudaType: tabValue,
-      status: 'Pending',
       deliveredQuantity: '',
     });
   };
@@ -226,7 +224,6 @@ const Sauda = () => {
       rate: sauda.rate,
       amount: sauda.totalAmount || '',
       saudaType: sauda.saudaType || sauda.type || tabValue,
-      status: sauda.status || 'Pending',
       deliveredQuantity: sauda.deliveredQuantity || '',
     });
     setModalOpen(true);
@@ -243,7 +240,6 @@ const Sauda = () => {
       rate: '',
       amount: '',
       saudaType: 'purchase',
-      status: 'Pending',
       deliveredQuantity: '',
       isCrossCut: false,
     });
@@ -269,8 +265,7 @@ const Sauda = () => {
       rate: formData.rate,
       totalAmount,
       saudaType: formData.saudaType,
-      status: formData.status,
-      deliveredQuantity: formData.deliveredQuantity,
+      delivered: formData.deliveredQuantity,
       isCrossCut: formData.isCrossCut,
     };
 
@@ -725,7 +720,6 @@ const Sauda = () => {
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Quantity</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Rate</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Amount</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Status</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Delivered Qty</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600, width: '120px' }}>Actions</TableCell>
                   </TableRow>
@@ -1042,24 +1036,6 @@ const Sauda = () => {
             </Stack>
 
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <FormControl fullWidth sx={{
-                '& .MuiOutlinedInput-root': {
-                  height: 56,
-                  borderRadius: 2,
-                },
-              }}>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  value={formData.status}
-                  label="Status"
-                  name="status"
-                  onChange={handleInputChange}
-                >
-                  <MenuItem value="Pending">Pending</MenuItem>
-                  <MenuItem value="Partial">Partial</MenuItem>
-                  <MenuItem value="Delivered">Delivered</MenuItem>
-                </Select>
-              </FormControl>
               <TextField
                 fullWidth
                 label="Delivered Quantity"
