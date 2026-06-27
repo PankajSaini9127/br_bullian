@@ -311,6 +311,8 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
   };
 
   // Render entries in the same order as they come from the API
+  let previousType = null;
+  let previousInvoiceNo = null;
   entries.forEach((entry) => {
     const date = formatDate(entry.date);
     const debit = getDebitAmount(entry);
@@ -318,6 +320,29 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     totalDebit += debit;
     totalCredit += credit;
     runningBal = Math.trunc((openingDebit + totalDebit) - (openingCredit + totalCredit));
+
+    // Add spacing when type changes from payment to invoice or vice versa
+    let currentType = entry.type;
+    if (previousType !== null && previousType !== currentType) {
+      htmlContent += `
+          <tr>
+            <td colspan="7" style="height: 8px; border-top: 2px solid #000; border-left: none; border-right: none; border-bottom: none;"></td>
+          </tr>
+      `;
+    }
+    // Add spacing between different invoices
+    if (previousType === 'Purchase' && currentType === 'Purchase') {
+      const currentInvoiceNo = entry.invoiceNo;
+      if (previousInvoiceNo !== null && previousInvoiceNo !== currentInvoiceNo) {
+        htmlContent += `
+          <tr>
+            <td colspan="7" style="height: 8px; border-top: 2px solid #000; border-left: none; border-right: none; border-bottom: none;"></td>
+          </tr>
+        `;
+      }
+    }
+    previousType = currentType;
+    previousInvoiceNo = entry.invoiceNo;
 
     let particulars = '';
     let fineStr = '-';
