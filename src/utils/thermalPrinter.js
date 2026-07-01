@@ -511,11 +511,15 @@ export function isBluetoothSupported() {
 }
 
 export async function printInvoiceThermal(invoice) {
+
   let htmlContent = '';
+
+  console.log(invoice)
   
   const partyName = invoice.partyId?.partyName || invoice.partyName || '-';
   const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-';
   const invNo = invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0');
+  const isReturn = invoice.isReturn || false;
 
   htmlContent += `
     <html>
@@ -538,7 +542,7 @@ export async function printInvoiceThermal(invoice) {
       </style>
     </head>
     <body>
-      <h1>BR BULLION - INCOMING INVOICE</h1>
+      <h1>BR BULLION - ${isReturn ? 'Purchase Return' : 'Purchase Invoice'}</h1>
       <div class="header">
         <p><strong>Party:</strong> ${partyName}</p>
         <p><strong>Date:</strong> ${invDate}</p>
@@ -682,10 +686,15 @@ export async function printInvoiceThermal(invoice) {
 
 export async function printSalesInvoiceBluetooth(invoice) {
   let htmlContent = '';
+
+  console.log(invoice)
   
   const partyName = invoice.partyId?.partyName || invoice.partyName || '-';
   const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-';
   const invNo = invoice.salesInvoiceNo || 'SINV-' + String(invoice._id || invoice.id).padStart(4, '0');
+  const isReturn = invoice.isReturn || false;
+
+  console.log(isReturn)
 
   htmlContent += `
     <html>
@@ -735,7 +744,7 @@ export async function printSalesInvoiceBluetooth(invoice) {
       </style>
     </head>
     <body>
-      <h1>Outgoing Sales Invoice</h1>
+      <h1>${isReturn ? 'SALES RETURN' : 'Sales Invoice'}</h1>
       <div class="header">
         <p>Name: ${partyName}</p>
         <p>Date: ${invDate}</p>
@@ -837,6 +846,7 @@ export async function printInvoiceBluetooth(invoice) {
   const partyName = invoice.partyId?.partyName || invoice.partyName || '-';
   const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-';
   const invNo = invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0');
+  const isReturn = invoice.isReturn || false;
 
   htmlContent += `
     <html>
@@ -886,7 +896,7 @@ export async function printInvoiceBluetooth(invoice) {
       </style>
     </head>
     <body>
-      <h1>BR BULLION - INCOMING INVOICE</h1>
+      <h1>BR BULLION - ${isReturn ? 'Purchase Return' : 'Purchase Invoice'}</h1>
       <div class="header">
         <p>Name: ${partyName}</p>
         <p>Date: ${invDate}</p>

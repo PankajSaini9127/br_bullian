@@ -31,6 +31,7 @@ import {
   Book as BookIcon,
   AccountBalance as AccountBalanceIcon,
   Work as WorkIcon,
+  NoteAdd as NoteAddIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +47,7 @@ const menuItems = [
   { text: 'Pagga List', icon: <InventoryIcon />, path: '/pagga-list' },
   { text: 'Case Book', icon: <AccountBalanceIcon />, path: '/case-book' },
   { text: 'Case', icon: <WorkIcon />, path: '/case' },
+  { text: 'Credit/Debit Note', icon: <NoteAddIcon />, path: '/credit-debit-note' },
   // { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   // { text: 'Sauda Check', icon: <SettingsIcon />, path: '/sauda-check' },
 ];

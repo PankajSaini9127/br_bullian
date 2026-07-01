@@ -17,6 +17,7 @@ import PaggaList from './pages/PaggaList';
 import PartyLedger from './pages/PartyLedger';
 import CaseBook from './pages/CaseBook';
 import Case from './pages/Case';
+import CreditDebitNote from './pages/CreditDebitNote';
 import ProtectedRoute from './components/ProtectedRoute';
 import useAutoLogout from './hooks/useAutoLogout';
 
@@ -45,6 +46,7 @@ function App() {
                     <Route path="/party-ledger" element={<PartyLedger />} />
                     <Route path="/case-book" element={<CaseBook />} />
                     <Route path="/case" element={<Case />} />
+                    <Route path="/credit-debit-note" element={<CreditDebitNote />} />
                     <Route path="/settings" element={<div>Settings Page</div>} />
                   </Routes>
                 </NavBar>
