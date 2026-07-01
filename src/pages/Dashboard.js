@@ -20,6 +20,7 @@ import {
   Inventory as DukanStockIcon,
 } from '@mui/icons-material';
 import salesInvoiceService from '../services/salesInvoiceService';
+import { gradients } from '../theme';
 
 const Dashboard = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -112,7 +113,7 @@ const Dashboard = () => {
       sx={{
         borderRadius: 3,
         boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-        border: '1px solid #e2e8f0',
+        border: '1px solid', borderColor: 'divider',
         overflow: 'hidden',
         '&:hover': {
           transform: 'translateY(-4px)',
@@ -124,19 +125,26 @@ const Dashboard = () => {
       <Box
         sx={{
           background: gradient,
-          p: 3,
+          p: { xs: 1.5, sm: 2, md: 3 },
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
         }}
       >
-        <Typography variant="h6" sx={{ color: '#fff', fontWeight: 600 }}>
+        <Typography 
+          variant="h6" 
+          sx={{ 
+            color: '#fff', 
+            fontWeight: 600,
+            fontSize: { xs: '0.75rem', sm: '0.95rem', md: '1.1rem' }
+          }}
+        >
           {title}
         </Typography>
         <Box
           sx={{
-            width: 48,
-            height: 48,
+            width: { xs: 32, sm: 40, md: 48 },
+            height: { xs: 32, sm: 40, md: 48 },
             borderRadius: 2,
             background: 'rgba(255, 255, 255, 0.2)',
             display: 'flex',
@@ -144,16 +152,17 @@ const Dashboard = () => {
             justifyContent: 'center',
           }}
         >
-          {icon}
+          {React.cloneElement(icon, { sx: { color: '#fff', fontSize: { xs: 18, sm: 22, md: 28 } } })}
         </Box>
       </Box>
-      <CardContent sx={{ pt: 3 }}>
+      <CardContent sx={{ pt: { xs: 1.5, sm: 2, md: 3 }, pb: { xs: 1.5, sm: 2, md: 3 } }}>
         <Typography
           variant="h4"
           sx={{
             fontWeight: 700,
             color: color,
             mb: 0.5,
+            fontSize: { xs: '1rem', sm: '1.25rem', md: '1.75rem' },
           }}
         >
           {value}
@@ -162,8 +171,10 @@ const Dashboard = () => {
           <Typography
             variant="body2"
             sx={{
-              color: '#64748b',
+              color: 'text.secondary',
               fontWeight: 500,
+              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.8rem' },
+              lineHeight: 1.2,
             }}
           >
             {subtitle}
@@ -174,15 +185,15 @@ const Dashboard = () => {
   );
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 } }}>
-      <Box sx={{ mb: 4 }}>
+    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 }, py: { xs: 2, md: 4 } }}>
+      <Box sx={{ mb: { xs: 3, md: 4 } }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 2 }}>
           <Typography
             variant="h4"
             sx={{
               fontWeight: 700,
               fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
             }}
@@ -194,68 +205,68 @@ const Dashboard = () => {
             label="Select Date"
             value={selectedDate}
             onChange={(e) => setSelectedDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
+            slotProps={{ inputLabel: { shrink: true } }}
             size="small"
-            sx={{ minWidth: { xs: '100%', sm: 200 } }}
+            sx={{ minWidth: { xs: '100%', sm: 200 }, width: { xs: '100%', sm: 'auto' } }}
           />
         </Box>
-        <Typography variant="body2" sx={{ color: '#64748b' }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: { xs: '0.85rem', sm: '0.875rem' } }}>
           Overview of your business metrics
         </Typography>
       </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} sm={6} md={3} lg={3}>
+      <Grid container spacing={{ xs: 1.5, sm: 3 }}>
+        <Grid item xs={6} sm={6} md={3} lg={3}>
           <MetricCard
             title="Incoming"
             value={`Invoices: ${dashboardData.incoming.totalInvoices}`}
             subtitle={`Fine: ${dashboardData.incoming.totalFine}g | Paggas: ${dashboardData.incoming.totalPuggas}`}
-            icon={<IncomingIcon sx={{ color: '#fff', fontSize: 28 }} />}
+            icon={<IncomingIcon />}
             color="#10b981"
-            gradient="linear-gradient(135deg, #10b981 0%, #059669 100%)"
+            gradient={gradients.successDark}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3} lg={3}>
+        <Grid item xs={6} sm={6} md={3} lg={3}>
           <MetricCard
             title="Sales"
             value={`Invoices: ${dashboardData.sales.totalInvoices}`}
             subtitle={`Fine: ${dashboardData.sales.totalFine}g | Paggas: ${dashboardData.sales.totalPuggas}`}
-            icon={<SalesIcon sx={{ color: '#fff', fontSize: 28 }} />}
+            icon={<SalesIcon />}
             color="#ef4444"
-            gradient="linear-gradient(135deg, #ef4444 0%, #dc2626 100%)"
+            gradient={gradients.danger}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3} lg={3}>
+        <Grid item xs={6} sm={6} md={3} lg={3}>
           <MetricCard
             title="Stock"
             value={`Paggas: ${dashboardData.stock.totalPuggas}`}
             subtitle={`Fine: ${dashboardData.stock.totalFine}g`}
-            icon={<PurchaseIcon sx={{ color: '#fff', fontSize: 28 }} />}
+            icon={<PurchaseIcon />}
             color="#6366f1"
-            gradient="linear-gradient(135deg, #6366f1 0%, #4338ca 100%)"
+            gradient={gradients.primaryDark}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3} lg={3}>
+        <Grid item xs={6} sm={6} md={3} lg={3}>
           <MetricCard
             title="Dukan Stock"
             value={`Paggas: ${dashboardData.dukanStock.totalPuggas}`}
             subtitle={`Fine: ${dashboardData.dukanStock.totalFine}g`}
-            icon={<DukanStockIcon sx={{ color: '#fff', fontSize: 28 }} />}
+            icon={<DukanStockIcon />}
             color="#8b5cf6"
-            gradient="linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)"
+            gradient={gradients.purple}
           />
         </Grid>
 
-        <Grid item xs={12} sm={6} md={3} lg={3}>
+        <Grid item xs={6} sm={6} md={3} lg={3}>
           <MetricCard
             title="Total Pending Sauda"
             value={metrics.totalPendingSauda}
-            icon={<PendingIcon sx={{ color: '#fff', fontSize: 28 }} />}
+            icon={<PendingIcon />}
             color="#f59e0b"
-            gradient="linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+            gradient={gradients.warning}
           />
         </Grid>
       </Grid>

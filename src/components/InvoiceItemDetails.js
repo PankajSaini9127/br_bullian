@@ -19,6 +19,7 @@ import {
   Delete as DeleteIcon,
   Save as SaveIcon,
 } from '@mui/icons-material';
+import { gradients } from '../theme';
 
 const InvoiceItemDetails = ({ onSave }) => {
   const [items, setItems] = useState([
@@ -86,7 +87,7 @@ const InvoiceItemDetails = ({ onSave }) => {
         p: 3,
         borderRadius: 2,
         boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-        border: '1px solid #e2e8f0',
+        border: '1px solid', borderColor: 'divider',
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -94,7 +95,7 @@ const InvoiceItemDetails = ({ onSave }) => {
           variant="h6"
           sx={{
             fontWeight: 700,
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+            background: gradients.primary,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -108,10 +109,10 @@ const InvoiceItemDetails = ({ onSave }) => {
             onClick={handleAddItem}
             size="small"
             sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
               '&:hover': {
-                background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                background: gradients.primaryHover,
               },
             }}
           >
@@ -123,10 +124,10 @@ const InvoiceItemDetails = ({ onSave }) => {
             onClick={handleSave}
             size="small"
             sx={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: gradients.successDark,
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
               '&:hover': {
-                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                background: gradients.successDarkHover,
               },
             }}
           >
@@ -138,7 +139,7 @@ const InvoiceItemDetails = ({ onSave }) => {
       <TableContainer>
         <Table>
           <TableHead>
-            <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+            <TableRow sx={{ background: gradients.primary }}>
               <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Sr No</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
               <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
@@ -151,11 +152,6 @@ const InvoiceItemDetails = ({ onSave }) => {
             {items.map((item) => (
               <TableRow
                 key={item.id}
-                sx={{
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                  },
-                }}
               >
                 <TableCell sx={{ fontWeight: 600 }}>{item.id}</TableCell>
                 <TableCell>
@@ -237,7 +233,7 @@ const InvoiceItemDetails = ({ onSave }) => {
                       inputProps: { step: '0.01' },
                     }}
                     sx={{
-                      bgcolor: '#f8fafc',
+                      bgcolor: 'background.default',
                       '& .MuiOutlinedInput-root': {
                         '&:hover fieldset': {
                           borderColor: '#818cf8',
@@ -257,7 +253,7 @@ const InvoiceItemDetails = ({ onSave }) => {
                     disabled={items.length === 1}
                     sx={{
                       color: '#ec4899',
-                      '&:hover': { background: '#fce7f3' },
+                      '&:hover': { background: 'rgba(236, 72, 153, 0.1)' },
                       '&:disabled': { color: '#ccc' },
                     }}
                   >
@@ -266,7 +262,7 @@ const InvoiceItemDetails = ({ onSave }) => {
                 </TableCell>
               </TableRow>
             ))}
-            <TableRow sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+            <TableRow sx={{ background: 'rgba(99, 102, 241, 0.04)' }}>
               <TableCell sx={{ fontWeight: 700 }} colSpan={2}>
                 Total
               </TableCell>
@@ -290,14 +286,14 @@ const InvoiceItemDetails = ({ onSave }) => {
         sx={{
           mt: 3,
           p: 3,
-          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          background: 'rgba(99, 102, 241, 0.04)',
           borderRadius: 2,
-          border: '1px solid #e2e8f0',
+          border: '1px solid', borderColor: 'divider',
         }}
       >
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6}>
-            <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
               Total Net Weight
             </Typography>
             <Typography
@@ -311,7 +307,7 @@ const InvoiceItemDetails = ({ onSave }) => {
             </Typography>
           </Grid>
           <Grid item xs={12} sm={6}>
-            <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
               Total Fine
             </Typography>
             <Typography

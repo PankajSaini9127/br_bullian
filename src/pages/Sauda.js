@@ -53,6 +53,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import partyService from '../services/partyService';
 import saudaService from '../services/saudaService';
+import { gradients } from '../theme';
 
 const Sauda = () => {
   const [saudaList, setSaudaList] = useState([]);
@@ -536,7 +537,7 @@ const Sauda = () => {
             mb: 2,
             fontWeight: 700,
             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+            background: gradients.primary,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -553,7 +554,7 @@ const Sauda = () => {
               p: 3,
               borderRadius: 2,
               boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-              border: '1px solid #e2e8f0',
+              border: '1px solid', borderColor: 'divider',
             }}
           >
             <Tabs
@@ -599,11 +600,11 @@ const Sauda = () => {
               p: 3,
               borderRadius: 2,
               boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-              border: '1px solid #e2e8f0',
+              border: '1px solid', borderColor: 'divider',
             }}
           >
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#424242' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 {tabValue === 'purchase' ? 'Purchase' : 'Sales'} Sauda List
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -612,10 +613,10 @@ const Sauda = () => {
                   startIcon={<PrintIcon />}
                   onClick={handlePrintAllSauda}
                   sx={{
-                    background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+                    background: gradients.success,
                     boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)',
+                      background: gradients.successHover,
                     },
                   }}
                 >
@@ -626,10 +627,10 @@ const Sauda = () => {
                   startIcon={<AddIcon />}
                   onClick={handleOpenModal}
                   sx={{
-                    background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                    background: gradients.primary,
                     boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                      background: gradients.primaryHover,
                     },
                   }}
                 >
@@ -700,7 +701,7 @@ const Sauda = () => {
                     color: '#6366f1',
                     '&:hover': {
                       borderColor: '#4338ca',
-                      background: '#e0e7ff',
+                      background: 'rgba(99, 102, 241, 0.1)',
                     },
                   }}
                 >
@@ -711,7 +712,7 @@ const Sauda = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                  <TableRow sx={{ background: gradients.primary }}>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
@@ -728,11 +729,6 @@ const Sauda = () => {
                   {saudaList.map((sauda, index) => (
                     <TableRow
                       key={sauda.id}
-                      sx={{
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                        },
-                      }}
                     >
                       <TableCell sx={{ fontWeight: 600 }}>{(page - 1) * limit + index + 1}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{sauda.saudaNo || 'SAUDA-' + String(sauda.id).padStart(4, '0')}</TableCell>
@@ -745,7 +741,7 @@ const Sauda = () => {
                           sx={{
                             fontWeight: 600,
                             fontSize: '0.72rem',
-                            bgcolor: sauda.saudaType === 'purchase' ? '#e0e7ff' : '#fce7f3',
+                            bgcolor: sauda.saudaType === 'purchase' ? 'rgba(224, 231, 255, 0.15)' : 'rgba(252, 231, 243, 0.15)',
                             color: sauda.saudaType === 'purchase' ? '#4338ca' : '#be185d',
                             '& .MuiChip-icon': {
                               color: sauda.saudaType === 'purchase' ? '#4338ca' : '#be185d',
@@ -771,7 +767,7 @@ const Sauda = () => {
                           sx={{
                             fontWeight: 600,
                             fontSize: '0.72rem',
-                            bgcolor: sauda.status === 'delivered' ? '#d1fae5' : sauda.status === 'partial' ? '#fef3c7' : '#fee2e2',
+                            bgcolor: sauda.status === 'delivered' ? 'rgba(209, 250, 229, 0.15)' : sauda.status === 'partial' ? 'rgba(254, 243, 199, 0.15)' : 'rgba(254, 226, 226, 0.15)',
                             color: sauda.status === 'delivered' ? '#065f46' : sauda.status === 'partial' ? '#92400e' : '#991b1b',
                           }}
                         />
@@ -785,21 +781,21 @@ const Sauda = () => {
                         <IconButton
                           size="small"
                           onClick={() => handlePrintSauda(sauda)}
-                          sx={{ color: '#10b981', '&:hover': { background: '#d1fae5' } }}
+                          sx={{ color: '#10b981', '&:hover': { background: 'rgba(16, 185, 129, 0.1)' } }}
                         >
                           <PrintIcon />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleEditSauda(sauda)}
-                          sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                          sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleDeleteSauda(sauda)}
-                          sx={{ color: '#ef4444', '&:hover': { background: '#fee2e2' } }}
+                          sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
                         >
                           <DeleteIcon />
                         </IconButton>
@@ -809,7 +805,7 @@ const Sauda = () => {
                   {saudaList.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                           No {tabValue === 'purchase' ? 'purchase' : 'sales'} sauda records found
                         </Typography>
                       </TableCell>
@@ -852,7 +848,7 @@ const Sauda = () => {
       >
         <DialogTitle
           sx={{
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+            background: gradients.primary,
             color: '#fff',
             fontWeight: 700,
             py: 3,
@@ -1077,7 +1073,7 @@ const Sauda = () => {
                 />
               }
               label="Cross Cut"
-              sx={{ fontWeight: 600, color: '#475569' }}
+              sx={{ fontWeight: 600, color: 'text.secondary' }}
             />
           </Stack>
         </DialogContent>
@@ -1086,13 +1082,13 @@ const Sauda = () => {
             onClick={handleCloseModal}
             startIcon={<CloseIcon />}
             sx={{
-              color: '#64748b',
+              color: 'text.secondary',
               fontWeight: 600,
               px: 3,
               py: 1.5,
               borderRadius: 2,
               '&:hover': {
-                background: '#f1f5f9',
+                background: 'rgba(99, 102, 241, 0.08)',
               },
             }}
           >
@@ -1103,14 +1099,14 @@ const Sauda = () => {
             startIcon={editingSauda ? <CheckIcon /> : <AddIcon />}
             onClick={handleSaveSauda}
             sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               fontWeight: 600,
               px: 4,
               py: 1.5,
               borderRadius: 2,
               boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
               '&:hover': {
-                background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                background: gradients.primaryHover,
               },
             }}
           />
@@ -1129,7 +1125,7 @@ const Sauda = () => {
           },
         }}
       >
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: '#fff' }}>
+        <DialogTitle sx={{ background: gradients.danger, color: '#fff' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <DeleteIcon />
             <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -1138,7 +1134,7 @@ const Sauda = () => {
           </Box>
         </DialogTitle>
         <DialogContent sx={{ py: 3 }}>
-          <Typography variant="body1" sx={{ color: '#64748b' }}>
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
             Are you sure you want to delete this sauda? This action cannot be undone.
           </Typography>
         </DialogContent>
@@ -1147,11 +1143,11 @@ const Sauda = () => {
             onClick={handleCancelDelete}
             variant="outlined"
             sx={{
-              borderColor: '#64748b',
-              color: '#64748b',
+              borderColor: 'divider',
+              color: 'text.secondary',
               '&:hover': {
-                borderColor: '#475569',
-                background: '#f1f5f9',
+                borderColor: 'primary.main',
+                background: 'rgba(99, 102, 241, 0.08)',
               },
             }}
           >
@@ -1161,10 +1157,10 @@ const Sauda = () => {
             onClick={handleConfirmDelete}
             variant="contained"
             sx={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              background: gradients.danger,
               color: '#fff',
               '&:hover': {
-                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                background: gradients.dangerHover,
                 boxShadow: '0 6px 16px rgba(239, 68, 68, 0.4)',
               },
             }}

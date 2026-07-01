@@ -14,40 +14,22 @@ import {
   Alert,
   CircularProgress,
   Divider,
-  Chip
+  Chip,
+  IconButton,
+  InputAdornment
 } from '@mui/material';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#6366f1',
-      light: '#818cf8',
-      dark: '#4338ca',
-    },
-    secondary: {
-      main: '#ec4899',
-      light: '#f472b6',
-      dark: '#be185d',
-    },
-    background: {
-      default: '#f0f9ff',
-      paper: '#ffffff',
-    },
-  },
-  typography: {
-    h5: {
-      color: '#1e293b',
-    },
-  },
-});
+import { useThemeMode } from '../context/ThemeContext';
+import { gradients } from '../theme';
 
 const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { modeColors: mc, mode } = useThemeMode();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -55,6 +37,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -62,6 +45,10 @@ const Login = () => {
       [e.target.name]: e.target.value,
     });
     setError('');
+  };
+
+  const handleTogglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const handleSubmit = async (e) => {
@@ -96,32 +83,34 @@ const Login = () => {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Container component="main" maxWidth="xs">
-        <Box
+    <Container component="main" maxWidth="xs">
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          minHeight: '100vh',
+          background: mode === 'dark' ? '#0a0a12' : gradients.loginPage,
+          ...(mode === 'dark' && {
+            backgroundImage: 'radial-gradient(circle at 20% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%), radial-gradient(circle at 80% 100%, rgba(236, 72, 153, 0.1) 0%, transparent 50%)',
+          }),
+        }}
+      >
+        <Paper
+          elevation={6}
           sx={{
-            marginTop: 8,
+            padding: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            minHeight: '100vh',
-            background: 'linear-gradient(180deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: 2,
+            background: mode === 'dark' ? 'rgba(20, 20, 32, 0.72)' : mc.background.cardGradient,
+            backdropFilter: mode === 'dark' ? 'blur(16px)' : 'none',
+            border: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.08)' : `2px solid ${mc.border}`,
+            boxShadow: mode === 'dark' ? '0 16px 48px rgba(0, 0, 0, 0.5)' : '0 20px 60px rgba(99, 102, 241, 0.3)',
           }}
         >
-          <Paper
-            elevation={6}
-            sx={{
-              padding: 4,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              borderRadius: 2,
-              background: 'linear-gradient(145deg, #ffffff, #f8fafc)',
-              border: '2px solid #e2e8f0',
-              boxShadow: '0 20px 60px rgba(99, 102, 241, 0.3)',
-            }}
-          >
-            <Avatar sx={{ m: 1, bgcolor: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', boxShadow: '0 8px 16px rgba(99, 102, 241, 0.4)', border: '3px solid #fff' }}>
+          <Avatar sx={{ m: 1, bgcolor: gradients.primary, boxShadow: '0 8px 16px rgba(99, 102, 241, 0.4)', border: '3px solid #fff' }}>
               <LockOutlinedIcon sx={{ color: '#ffffff' }} />
             </Avatar>
             <Chip 
@@ -129,17 +118,17 @@ const Login = () => {
               size="small" 
               sx={{ 
                 mb: 2, 
-                bgcolor: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)', 
+                bgcolor: gradients.avatarPrimary, 
                 color: '#ffffff',
                 fontSize: '0.75rem',
                 fontWeight: 600,
                 boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
               }} 
             />
-            <Typography component="h1" variant="h5" sx={{ mb: 1, fontWeight: 700, letterSpacing: 0.5, background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <Typography component="h1" variant="h5" sx={{ mb: 1, fontWeight: 700, letterSpacing: 0.5, background: gradients.primary, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               Sign In
             </Typography>
-            <Typography variant="body2" sx={{ mb: 3, color: '#64748b', fontWeight: 500 }}>
+            <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary', fontWeight: 500 }}>
               Welcome to BR Bullion
             </Typography>
 
@@ -190,7 +179,7 @@ const Login = () => {
                 fullWidth
                 name="password"
                 label="Password"
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 id="password"
                 autoComplete="current-password"
                 value={formData.password}
@@ -207,6 +196,30 @@ const Login = () => {
                     },
                   },
                 }}
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={handleTogglePasswordVisibility}
+                          edge="end"
+                          disabled={loading}
+                          aria-label="toggle password visibility"
+                          size="large"
+                          sx={{ 
+                            color: '#6366f1',
+                            backgroundColor: 'transparent',
+                            '&:hover': {
+                              backgroundColor: 'transparent',
+                            },
+                          }}
+                        >
+                          {showPassword ? <VisibilityOff sx={{ fontSize: 28 }} /> : <Visibility sx={{ fontSize: 28 }} />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
               <Button
                 type="submit"
@@ -216,10 +229,10 @@ const Login = () => {
                   mt: 3, 
                   mb: 2, 
                   py: 1.5,
-                  background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                  background: gradients.primary,
                   boxShadow: '0 8px 20px rgba(99, 102, 241, 0.4)',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                    background: gradients.primaryHover,
                     boxShadow: '0 12px 28px rgba(99, 102, 241, 0.5)',
                     transform: 'translateY(-2px)',
                   },
@@ -229,7 +242,7 @@ const Login = () => {
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : 'Sign In'}
               </Button>
-              <Divider sx={{ my: 2, borderColor: '#e2e8f0', borderWidth: 2 }} />
+              <Divider sx={{ my: 2, borderColor: 'divider', borderWidth: 2 }} />
               <Grid container>
                 <Grid item xs>
                   <Link href="#" variant="body2" sx={{ color: '#6366f1', fontWeight: 600, '&:hover': { color: '#ec4899' } }}>
@@ -254,7 +267,6 @@ const Login = () => {
           </Typography>
         </Box>
       </Container>
-    </ThemeProvider>
   );
 };
 

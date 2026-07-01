@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
+import { ThemeModeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
 import BRLoader from './components/BRLoader';
 import Login from './pages/Login';
@@ -25,7 +26,8 @@ function App() {
   const token = localStorage.getItem('token');
   useAutoLogout(token);
   return (
-    <AuthProvider>
+    <ThemeModeProvider>
+      <AuthProvider>
       
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -57,7 +59,8 @@ function App() {
       
       <ToastContainer />
       <BRLoader />
-    </AuthProvider>
+      </AuthProvider>
+    </ThemeModeProvider>
   );
 }
 

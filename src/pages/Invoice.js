@@ -52,6 +52,7 @@ import partyService from '../services/partyService';
 import invoiceService from '../services/invoiceService';
 import { printInvoiceThermal, printInvoiceBluetooth, isBluetoothSupported } from '../utils/thermalPrinter';
 import { roundOffFine, roundOffFineFormatted } from '../utils/roundOff';
+import { gradients } from '../theme';
 
 const Invoice = () => {
   const [invoices, setInvoices] = useState([]);
@@ -783,7 +784,6 @@ const Invoice = () => {
     try {
       await printInvoiceBluetooth(invoice);
       toast.dismiss(toastId);
-      toast.success('Print sent to thermal printer');
     } catch (error) {
       console.error('Print failed:', error);
       toast.dismiss(toastId);
@@ -898,7 +898,7 @@ const Invoice = () => {
             mb: 2,
             fontWeight: 700,
             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+            background: gradients.primary,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -918,11 +918,11 @@ const Invoice = () => {
                 p: 3,
                 borderRadius: 2,
                 boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid', borderColor: 'divider',
               }}
             >
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 600, color: '#424242' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                   Invoice List
                 </Typography>
                 <Box>
@@ -931,10 +931,10 @@ const Invoice = () => {
                     startIcon={<AddIcon />}
                     onClick={handleShowAddForm}
                     sx={{
-                      background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                      background: gradients.primary,
                       boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
                       '&:hover': {
-                        background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                        background: gradients.primaryHover,
                         boxShadow: '0 6px 16px rgba(99, 102, 241, 0.5)',
                       },
                     }}
@@ -947,10 +947,10 @@ const Invoice = () => {
                     onClick={handleOpenReturnForm}
                     sx={{
                       ml: 2,
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      background: gradients.warning,
                       boxShadow: '0 4px 12px rgba(245, 158, 11, 0.4)',
                       '&:hover': {
-                        background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                        background: gradients.warningHover,
                         boxShadow: '0 6px 16px rgba(245, 158, 11, 0.5)',
                       },
                     }}
@@ -1058,7 +1058,7 @@ const Invoice = () => {
                       color: '#6366f1',
                       '&:hover': {
                         borderColor: '#4338ca',
-                        background: '#e0e7ff',
+                        background: 'rgba(99, 102, 241, 0.1)',
                       },
                     }}
                   >
@@ -1069,7 +1069,7 @@ const Invoice = () => {
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                    <TableRow sx={{ background: gradients.primary }}>
                       <TableCell sx={{ color: '#fff', fontWeight: 600, width: 50 }}>Sr No</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Invoice No</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
@@ -1087,11 +1087,6 @@ const Invoice = () => {
                     {invoices.map((invoice,index) => (
                       <TableRow
                         key={invoice.id}
-                        sx={{
-                          '&:hover': {
-                            background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                          },
-                        }}
                       >
                         <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>{invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0')}</TableCell>
@@ -1102,7 +1097,7 @@ const Invoice = () => {
                             label={invoice.isReturn ? 'Return' : 'Purchase'}
                             size="small"
                             sx={{
-                              bgcolor: invoice.isReturn ? '#fef3c7' : '#dbeafe',
+                              bgcolor: invoice.isReturn ? 'rgba(254, 243, 199, 0.15)' : 'rgba(219, 234, 254, 0.15)',
                               color: invoice.isReturn ? '#92400e' : '#1e40af',
                               fontWeight: 600,
                             }}
@@ -1113,7 +1108,7 @@ const Invoice = () => {
                             label={invoice.items?.length || 0}
                             size="small"
                             sx={{
-                              bgcolor: '#dbeafe',
+                              bgcolor: 'rgba(219, 234, 254, 0.15)',
                               color: '#1e40af',
                               fontWeight: 600,
                             }}
@@ -1135,7 +1130,7 @@ const Invoice = () => {
                             <IconButton
                               size="small"
                               onClick={() => handleViewInvoice(invoice)}
-                              sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                              sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
                             >
                               <VisibilityIcon />
                             </IconButton>
@@ -1146,7 +1141,7 @@ const Invoice = () => {
                             <IconButton
                               size="small"
                               onClick={() => handleEditInvoice(invoice)}
-                              sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                              sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
                             >
                               <EditIcon />
                             </IconButton>
@@ -1157,7 +1152,7 @@ const Invoice = () => {
                             <IconButton
                               size="small"
                               onClick={() => handlePrintInvoice(invoice)}
-                              sx={{ color: '#10b981', '&:hover': { background: '#d1fae5' } }}
+                              sx={{ color: '#10b981', '&:hover': { background: 'rgba(16, 185, 129, 0.1)' } }}
                             >
                               <DownloadIcon />
                             </IconButton>
@@ -1168,7 +1163,7 @@ const Invoice = () => {
                             <IconButton
                               size="small"
                               onClick={() => handleBluetoothPrintInvoice(invoice)}
-                              sx={{ color: '#3b82f6', '&:hover': { background: '#dbeafe' } }}
+                              sx={{ color: '#3b82f6', '&:hover': { background: 'rgba(59, 130, 246, 0.1)' } }}
                             >
                               <PrintIcon fontSize="small" />
                             </IconButton>
@@ -1202,13 +1197,13 @@ const Invoice = () => {
                 p: 3,
                 borderRadius: 2,
                 boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-                border: '1px solid #e2e8f0',
+                border: '1px solid', borderColor: 'divider',
               }}
             >
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#424242' }}>
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: 'text.primary' }}>
                 No Invoices Found
               </Typography>
-              <Typography variant="body2" sx={{ color: '#64748b' }}>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                 Click the "Add Invoice" button to create your first invoice.
               </Typography>
             </Paper>
@@ -1225,12 +1220,12 @@ const Invoice = () => {
               p: 3,
               borderRadius: 2,
               boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-              border: '1px solid #e2e8f0',
+              border: '1px solid', borderColor: 'divider',
               mb: 4,
             }}
           >
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 3 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: '#424242' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                 Create New Invoice
               </Typography>
               <Button
@@ -1242,7 +1237,7 @@ const Invoice = () => {
               </Button>
             </Box>
             {formError && (
-              <Box sx={{ mb: 3, p: 2, background: '#fee2e2', border: '1px solid #fecaca', borderRadius: 1 }}>
+              <Box sx={{ mb: 3, p: 2, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #fecaca', borderRadius: 1 }}>
                 <Typography variant="body2" sx={{ color: '#dc2626', fontWeight: 600 }}>
                   {formError}
                 </Typography>
@@ -1351,7 +1346,7 @@ const Invoice = () => {
                   <Stack spacing={2} sx={{ mt: 2 }}>
                     <Box sx={{ 
                       p: 2, 
-                      background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+                      background: gradients.successLight,
                       border: '1px solid #bbf7d0',
                       borderRadius: 2 
                     }}>
@@ -1359,10 +1354,10 @@ const Invoice = () => {
                         Sauda Summary
                       </Typography>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                        {/* <Typography variant="body2" sx={{ color: '#64748b' }}>
+                        {/* <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                           Remaining Sales Fine: <strong>{partySaudaSummary.sales?.remaining || 0}g</strong>
                         </Typography> */}
-                        <Typography variant="body2" sx={{ color: '#64748b' }}>
+                        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                           Remaining Purchase Fine: <strong>{partySaudaSummary.purchase?.remaining || 0}g</strong>
                         </Typography>
                       </Stack>
@@ -1380,7 +1375,7 @@ const Invoice = () => {
               p: 1,
               borderRadius: 2,
               boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-              border: '1px solid #e2e8f0',
+              border: '1px solid', borderColor: 'divider',
               mb: 2,
             }}
           >
@@ -1390,7 +1385,7 @@ const Invoice = () => {
                 sx={{
                   fontWeight: 700,
                   fontSize: { xs: '1rem', sm: '1.25rem' },
-                  background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                  background: gradients.primary,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
@@ -1403,10 +1398,10 @@ const Invoice = () => {
                 onClick={handleAddPagga}
                 size="small"
                 sx={{
-                  background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                  background: gradients.primary,
                   boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                    background: gradients.primaryHover,
                   },
                 }}
               >
@@ -1417,7 +1412,7 @@ const Invoice = () => {
             <TableContainer>
               <Table>
                 <TableHead>
-                  <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                  <TableRow sx={{ background: gradients.primary }}>
                     <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Sr No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
@@ -1430,11 +1425,6 @@ const Invoice = () => {
                   {items.map((item) => (
                     <TableRow
                       key={item.id}
-                      sx={{
-                        '&:hover': {
-                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                        },
-                      }}
                     >
                       <TableCell sx={{ fontWeight: 600 }}>{item.id}</TableCell>
                       <TableCell>
@@ -1517,7 +1507,7 @@ const Invoice = () => {
                             readOnly: true,
                           }}
                           sx={{
-                            bgcolor: '#f8fafc',
+                            bgcolor: 'background.default',
                             '& .MuiOutlinedInput-root': {
                               '&:hover fieldset': {
                                 borderColor: '#818cf8',
@@ -1538,7 +1528,7 @@ const Invoice = () => {
                           sx={{
                             color: '#ef4444',
                             '&:hover': {
-                              background: '#fee2e2',
+                              background: 'rgba(239, 68, 68, 0.1)',
                             },
                             '&.Mui-disabled': {
                               color: '#d1d5db',
@@ -1550,7 +1540,7 @@ const Invoice = () => {
                       </TableCell>
                     </TableRow>
                   ))}
-                  <TableRow sx={{ background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
+                  <TableRow sx={{ background: 'rgba(99, 102, 241, 0.04)' }}>
                     <TableCell sx={{ fontWeight: 700 }} colSpan={2}>
                       Total
                     </TableCell>
@@ -1574,14 +1564,14 @@ const Invoice = () => {
               sx={{
                 mt: 3,
                 p: 3,
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                background: 'rgba(99, 102, 241, 0.04)',
                 borderRadius: 2,
-                border: '1px solid #e2e8f0',
+                border: '1px solid', borderColor: 'divider',
               }}
             >
               <Grid container spacing={2}>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Total Net Weight
                   </Typography>
                   <Typography
@@ -1595,7 +1585,7 @@ const Invoice = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1 }}>
                     Total Fine
                   </Typography>
                   <Typography
@@ -1615,10 +1605,10 @@ const Invoice = () => {
                     onClick={handleSaveInvoice}
                     disabled={!selectedPartyId}
                     sx={{
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      background: gradients.successDark,
                       boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                       '&:hover': {
-                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                        background: gradients.successDarkHover,
                       },
                     }}
                   >
@@ -1633,7 +1623,7 @@ const Invoice = () => {
 
       {/* View Invoice Modal */}
       <Dialog open={viewModalOpen} onClose={handleCloseViewModal} maxWidth="md" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
-        <DialogTitle sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)', color: '#fff' }}>
+        <DialogTitle sx={{ background: gradients.primary, color: '#fff' }}>
           Invoice Details
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
@@ -1641,32 +1631,32 @@ const Invoice = () => {
             <Box>
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Invoice No</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Invoice No</Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>{selectedInvoice.invoiceNo}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Party Name</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Party Name</Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>{selectedInvoice.partyName}</Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Date</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Date</Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
                     {selectedInvoice.invoiceDate ? new Date(selectedInvoice.invoiceDate).toLocaleDateString('en-GB') : '-'}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Total Items</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Total Items</Typography>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>{selectedInvoice.items?.length || 0}</Typography>
                 </Grid>
               </Grid>
 
-              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#424242' }}>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary' }}>
                 Pagga Details
               </Typography>
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                    <TableRow sx={{ background: gradients.primary }}>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
@@ -1695,16 +1685,16 @@ const Invoice = () => {
                 </Table>
               </TableContainer>
 
-              <Box sx={{ mt: 3, p: 2, background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: 1 }}>
+              <Box sx={{ mt: 3, p: 2, background: 'rgba(99, 102, 241, 0.04)', borderRadius: 1 }}>
                 <Grid container spacing={2}>
                   <Grid item xs={6}>
-                    <Typography variant="body2" sx={{ color: '#64748b' }}>Total Gross Weight</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>Total Gross Weight</Typography>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#6366f1' }}>
                       {selectedInvoice.items?.reduce((total, item) => total + (parseFloat(item.weight) || 0), 0).toFixed(2)} g
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
-                    <Typography variant="body2" sx={{ color: '#64748b' }}>Total Fine</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>Total Fine</Typography>
                     <Typography variant="h6" sx={{ fontWeight: 700, color: '#ec4899' }}>
                       {selectedInvoice.items?.reduce((total, item) => {
                         const weight = parseFloat(item.weight) || 0;
@@ -1782,9 +1772,9 @@ const Invoice = () => {
               startIcon={<AddIcon />}
               onClick={handleAddEditPagga}
               sx={{
-                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                background: gradients.primary,
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                  background: gradients.primaryHover,
                 },
               }}
             >
@@ -1795,7 +1785,7 @@ const Invoice = () => {
           <TableContainer component={Paper} elevation={1}>
             <Table>
               <TableHead>
-                <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                <TableRow sx={{ background: gradients.primary }}>
                   <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Sr No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
@@ -1808,11 +1798,6 @@ const Invoice = () => {
                 {editCurrentPagga.map((item, index) => (
                   <TableRow
                     key={index}
-                    sx={{
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                      },
-                    }}
                   >
                     <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
                     <TableCell>
@@ -1862,7 +1847,7 @@ const Invoice = () => {
                       <IconButton
                         size="small"
                         onClick={() => handleRemoveEditPagga(index)}
-                        sx={{ color: '#ef4444', '&:hover': { background: '#fee2e2' } }}
+                        sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -1872,7 +1857,7 @@ const Invoice = () => {
                 {editCurrentPagga.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body2" sx={{ color: '#64748b' }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                         No pagga in this invoice. Click "Add Pagga" to add.
                       </Typography>
                     </TableCell>
@@ -1890,9 +1875,9 @@ const Invoice = () => {
             onClick={handleUpdateInvoice}
             variant="contained"
             sx={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: gradients.successDark,
               '&:hover': {
-                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                background: gradients.successDarkHover,
               },
             }}
           >
@@ -1910,7 +1895,7 @@ const Invoice = () => {
             sx={{
               mb: 3,
               p: 3,
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              background: gradients.warning,
               borderRadius: 2,
               color: '#fff',
             }}
@@ -2006,7 +1991,7 @@ const Invoice = () => {
                   mt: 4,
                   mb: 2,
                   fontWeight: 700,
-                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  background: gradients.warning,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}
@@ -2039,7 +2024,7 @@ const Invoice = () => {
               <TableContainer component={Paper} elevation={1}>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
+                    <TableRow sx={{ background: gradients.warning }}>
                       <TableCell padding="checkbox">
                         <Checkbox
                           checked={returnSelectAll}
@@ -2065,7 +2050,7 @@ const Invoice = () => {
                         key={pagga._id}
                         sx={{
                           '&:hover': {
-                            background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                            background: gradients.warningRowHover,
                           },
                         }}
                       >
@@ -2104,9 +2089,9 @@ const Invoice = () => {
             onClick={handleSaveReturnInvoice}
             variant="contained"
             sx={{
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              background: gradients.warning,
               '&:hover': {
-                background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                background: gradients.warningHover,
               },
             }}
           >
@@ -2149,9 +2134,9 @@ const Invoice = () => {
             onClick={handleExcessFineSubmit}
             variant="contained"
             sx={{
-              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              background: gradients.successDark,
               '&:hover': {
-                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                background: gradients.successDarkHover,
               },
             }}
           >

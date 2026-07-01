@@ -37,6 +37,7 @@ import {
   Save as SaveIcon,
 } from '@mui/icons-material';
 import partyService from '../services/partyService';
+import { gradients } from '../theme';
 
 const CreditDebitNote = () => {
   const [noteType, setNoteType] = useState('credit'); // 'credit' or 'debit'
@@ -50,6 +51,7 @@ const CreditDebitNote = () => {
     partyId: '',
     noteDate: new Date().toISOString().split('T')[0],
     amount: '',
+    fine: '',
     reason: '',
   });
 
@@ -84,6 +86,7 @@ const CreditDebitNote = () => {
       partyId: '',
       noteDate: new Date().toISOString().split('T')[0],
       amount: '',
+      fine: '',
       reason: '',
     });
   };
@@ -95,6 +98,7 @@ const CreditDebitNote = () => {
       partyId: note.partyId,
       noteDate: note.noteDate,
       amount: note.amount,
+      fine: note.fine,
       reason: note.reason,
     });
     setModalOpen(true);
@@ -116,13 +120,19 @@ const CreditDebitNote = () => {
       partyId: '',
       noteDate: new Date().toISOString().split('T')[0],
       amount: '',
+      fine: '',
       reason: '',
     });
   };
 
   const handleSaveNote = () => {
-    if (!formData.partyName || !formData.amount || !formData.reason) {
-      toast.error('Please fill all required fields');
+    if (!formData.partyName) {
+      toast.error('Please select a party');
+      return;
+    }
+
+    if (!formData.amount && !formData.fine) {
+      toast.error('Please fill either Amount or Fine');
       return;
     }
 
@@ -189,14 +199,17 @@ const CreditDebitNote = () => {
             <tr>
               <th>Description</th>
               <th>Amount (&#8377;)</th>
+              <th>Fine (g)</th>
             </tr>
             <tr>
               <td>${note.reason}</td>
               <td>${parseFloat(note.amount).toLocaleString('en-IN')}</td>
+              <td>${note.fine ? parseFloat(note.fine).toLocaleString('en-IN') : '-'}</td>
             </tr>
           </table>
           <div class="footer">
-            <strong>Total Amount: &#8377;${parseFloat(note.amount).toLocaleString('en-IN')}</strong>
+            <strong>Total Amount: &#8377;${parseFloat(note.amount).toLocaleString('en-IN')}</strong><br/>
+            <strong>Total Fine: ${note.fine ? parseFloat(note.fine).toLocaleString('en-IN') + 'g' : '-'}</strong>
           </div>
         </body>
       </html>
@@ -244,12 +257,13 @@ const CreditDebitNote = () => {
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
-                <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                <TableRow sx={{ background: gradients.primary }}>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Note No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Reason</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Amount (&#8377;)</TableCell>
+                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Fine (g)</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
@@ -264,6 +278,9 @@ const CreditDebitNote = () => {
                       <TableCell>{note.reason}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>
                         &#8377;{parseFloat(note.amount).toLocaleString('en-IN')}
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        {note.fine ? parseFloat(note.fine).toLocaleString('en-IN') : '-'}
                       </TableCell>
                       <TableCell>
                         <Stack direction="row" spacing={1}>
@@ -294,7 +311,7 @@ const CreditDebitNote = () => {
                   ))}
                 {notes.filter((note) => note.type === noteType).length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">
                         No {noteType === 'credit' ? 'credit' : 'debit'} notes found
                       </Typography>
@@ -344,18 +361,30 @@ const CreditDebitNote = () => {
                 />
               </Box>
             </Stack>
-            <TextField
-              fullWidth
-              label="Amount"
-              type="number"
-              name="amount"
-              value={formData.amount}
-              onChange={handleInputChange}
-              onInput={(e) => {
-                e.target.value = e.target.value.replace(/[^0-9.]/g, '');
-              }}
-              required
-            />
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+              <TextField
+                fullWidth
+                label="Amount"
+                type="number"
+                name="amount"
+                value={formData.amount}
+                onChange={handleInputChange}
+                onInput={(e) => {
+                  e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+                }}
+              />
+              <TextField
+                fullWidth
+                label="Fine (g)"
+                type="number"
+                name="fine"
+                value={formData.fine}
+                onChange={handleInputChange}
+                onInput={(e) => {
+                  e.target.value = e.target.value.replace(/[^0-9.]/g, '');
+                }}
+              />
+            </Stack>
             <TextField
               fullWidth
               label="Reason"
@@ -364,7 +393,6 @@ const CreditDebitNote = () => {
               onChange={handleInputChange}
               multiline
               rows={3}
-              required
             />
           </Stack>
         </DialogContent>

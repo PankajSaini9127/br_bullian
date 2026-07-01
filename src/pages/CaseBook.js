@@ -24,6 +24,7 @@ import {
   Print as PrintIcon,
 } from '@mui/icons-material';
 import caseService from '../services/caseService';
+import { gradients } from '../theme';
 
 const CaseBook = () => {
   const [cashBook, setCashBook] = useState(null);
@@ -141,7 +142,7 @@ const CaseBook = () => {
       <style>{printStyles}</style>
       <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, mb: 4, px: { xs: 1, sm: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 2, mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }, color: '#1e293b' }}>
+          <Typography variant="h4" sx={{ fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }, color: 'text.primary' }}>
             Cash Book
           </Typography>
           <Button
@@ -150,7 +151,7 @@ const CaseBook = () => {
             onClick={handlePrint}
             className="no-print"
             sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               fontWeight: 600,
             }}
           >
@@ -215,45 +216,45 @@ const CaseBook = () => {
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ background: '#f0f0f0', fontWeight: 700 }}>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000', textAlign: 'center' }}>Date</TableCell>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000' }}>Particulars</TableCell>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000', textAlign: 'center' }}>Voucher Type</TableCell>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000', textAlign: 'center' }}>Voucher No</TableCell>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000', textAlign: 'right' }}>Debit</TableCell>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000', textAlign: 'right' }}>Credit</TableCell>
-                <TableCell sx={{ fontWeight: 600, border: '1px solid #000', textAlign: 'right' }}>Balance</TableCell>
+              <TableRow sx={{ background: 'rgba(0,0,0,0.04)', fontWeight: 700 }}>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider' }}>Particulars</TableCell>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>Voucher Type</TableCell>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>Voucher No</TableCell>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>Debit</TableCell>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>Credit</TableCell>
+                <TableCell sx={{ fontWeight: 600, border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>Balance</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {transactionsWithBalance.map((transaction, index) => (
                 <TableRow key={index}>
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                     {transaction.date ? new Date(transaction.date).toLocaleDateString('en-GB') : '-'}
                   </TableCell>
-                  <TableCell sx={{ border: '1px solid #000' }}>{transaction.particular}</TableCell>
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>{transaction.voucherType}</TableCell>
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'center' }}>{transaction.voucherNo}</TableCell>
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'right' }}>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider' }}>{transaction.particular}</TableCell>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>{transaction.voucherType}</TableCell>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>{transaction.voucherNo}</TableCell>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
                     {transaction.debit > 0 ? `₹${transaction.debit.toFixed(2)}` : '-'}
                   </TableCell>
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'right' }}>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
                     {transaction.credit > 0 ? `₹${transaction.credit.toFixed(2)}` : '-'}
                   </TableCell>
-                  <TableCell sx={{ border: '1px solid #000', textAlign: 'right', fontWeight: 600 }}>
+                  <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'right', fontWeight: 600 }}>
                     ₹{transaction.balance.toFixed(2)}
                   </TableCell>
                 </TableRow>
               ))}
-              <TableRow sx={{ background: '#f0f0f0', fontWeight: 700 }}>
-                <TableCell sx={{ border: '1px solid #000' }} colSpan={4} textAlign="right">Total</TableCell>
-                <TableCell sx={{ border: '1px solid #000', textAlign: 'right' }}>
+              <TableRow sx={{ background: 'rgba(0,0,0,0.04)', fontWeight: 700 }}>
+                <TableCell sx={{ border: '1px solid', borderColor: 'divider' }} colSpan={4} textAlign="right">Total</TableCell>
+                <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
                   ₹{totalIncoming.toFixed(2)}
                 </TableCell>
-                <TableCell sx={{ border: '1px solid #000', textAlign: 'right' }}>
+                <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
                   ₹{totalOutgoing.toFixed(2)}
                 </TableCell>
-                <TableCell sx={{ border: '1px solid #000', textAlign: 'right' }}>
+                <TableCell sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'right' }}>
                   ₹{balance.toFixed(2)}
                 </TableCell>
               </TableRow>
@@ -261,7 +262,7 @@ const CaseBook = () => {
           </Table>
         </TableContainer>
 
-        <Box sx={{ mt: 4, p: 2, bgcolor: '#f1f5f9', border: '1px solid #ddd', fontWeight: 700 }}>
+        <Box sx={{ mt: 4, p: 2, bgcolor: 'background.default', border: '1px solid', borderColor: 'divider', fontWeight: 700 }}>
           <Typography variant="h6">
             Balance: ₹{balance.toFixed(2)}
           </Typography>
@@ -283,14 +284,14 @@ const CaseBook = () => {
               {loading ? (
                 <Box sx={{ textAlign: 'center', py: 4 }}>Loading...</Box>
               ) : incomingPayments.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>
+                <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
                   <Typography>No incoming payments</Typography>
                 </Box>
               ) : (
                 <TableContainer>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ background: '#dcfce7' }}>
+                      <TableRow sx={{ background: 'rgba(220, 252, 231, 0.15)' }}>
                         <TableCell sx={{ fontWeight: 600 }}>Sr No</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>Payment No</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>Party</TableCell>
@@ -299,7 +300,7 @@ const CaseBook = () => {
                     </TableHead>
                     <TableBody>
                       {incomingPayments.map((payment, index) => (
-                        <TableRow key={payment._id} sx={{ '&:hover': { background: '#f8fafc' } }}>
+                        <TableRow key={payment._id}>
                           <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
                           <TableCell sx={{ fontWeight: 600 }}>{payment.paymentNo || '-'}</TableCell>
                           <TableCell>{payment.partyId?.partyName || '-'}</TableCell>
@@ -328,14 +329,14 @@ const CaseBook = () => {
               {loading ? (
                 <Box sx={{ textAlign: 'center', py: 4 }}>Loading...</Box>
               ) : outgoingPayments.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>
+                <Box sx={{ textAlign: 'center', py: 8, color: 'text.secondary' }}>
                   <Typography>No outgoing payments</Typography>
                 </Box>
               ) : (
                 <TableContainer>
                   <Table size="small">
                     <TableHead>
-                      <TableRow sx={{ background: '#fee2e2' }}>
+                      <TableRow sx={{ background: 'rgba(254, 226, 226, 0.15)' }}>
                         <TableCell sx={{ fontWeight: 600 }}>Sr No</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>Payment No</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>Party</TableCell>
@@ -344,7 +345,7 @@ const CaseBook = () => {
                     </TableHead>
                     <TableBody>
                       {outgoingPayments.map((payment, index) => (
-                        <TableRow key={payment._id} sx={{ '&:hover': { background: '#f8fafc' } }}>
+                        <TableRow key={payment._id}>
                           <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
                           <TableCell sx={{ fontWeight: 600 }}>{payment.paymentNo || '-'}</TableCell>
                           <TableCell>{payment.partyId?.partyName || '-'}</TableCell>

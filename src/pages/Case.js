@@ -39,6 +39,7 @@ import {
 } from '@mui/icons-material';
 import caseService from '../services/caseService';
 import partyService from '../services/partyService';
+import { gradients } from '../theme';
 
 const Case = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -212,7 +213,7 @@ const Case = () => {
 
   return (
     <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, mb: 4, px: { xs: 1, sm: 2, md: 3 } }}>
-      <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }, color: '#1e293b' }}>
+      <Typography variant="h4" sx={{ mb: 4, fontWeight: 700, fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }, color: 'text.primary' }}>
         Case Management
       </Typography>
 
@@ -238,7 +239,7 @@ const Case = () => {
               startIcon={<AddIcon />}
               onClick={handleOpenModal}
               sx={{
-                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                background: gradients.primary,
                 fontWeight: 600,
                 whiteSpace: 'nowrap',
               }}
@@ -250,7 +251,7 @@ const Case = () => {
           <TableContainer component={Paper} elevation={0}>
             <Table>
               <TableHead>
-                <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                <TableRow sx={{ background: gradients.primary }}>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Payment No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party</TableCell>
@@ -269,13 +270,13 @@ const Case = () => {
                   </TableRow>
                 ) : cases.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, color: '#94a3b8' }}>
+                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
                       No {tabValue === 0 ? 'incoming' : 'outgoing'} cases found
                     </TableCell>
                   </TableRow>
                 ) : (
                   cases.map((caseItem, index) => (
-                    <TableRow key={caseItem._id} sx={{ '&:hover': { background: '#f8fafc' } }}>
+                    <TableRow key={caseItem._id}>
                       <TableCell sx={{ fontWeight: 600 }}>{(page - 1) * limit + index + 1}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{caseItem.paymentNo || '-'}</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>{caseItem.partyId?.partyName || '-'}</TableCell>
@@ -290,14 +291,14 @@ const Case = () => {
                         <IconButton
                           size="small"
                           onClick={() => handleEditCase(caseItem)}
-                          sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                          sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleDeleteCase(caseItem._id)}
-                          sx={{ color: '#ef4444', '&:hover': { background: '#fee2e2' } }}
+                          sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -410,7 +411,7 @@ const Case = () => {
             onClick={handleSaveCase}
             disabled={!partyId || !amount}
             sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               fontWeight: 600,
             }}
           >
@@ -433,7 +434,7 @@ const Case = () => {
             variant="contained"
             onClick={handleConfirmDelete}
             sx={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              background: gradients.danger,
               fontWeight: 600,
             }}
           >

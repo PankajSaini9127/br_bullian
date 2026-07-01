@@ -32,9 +32,14 @@ import {
   AccountBalance as AccountBalanceIcon,
   Work as WorkIcon,
   NoteAdd as NoteAddIcon,
+  LocalShipping as LocalShippingIcon,
+  DarkMode as DarkModeIcon,
+  LightMode as LightModeIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useThemeMode } from '../context/ThemeContext';
+import { gradients } from '../theme';
 
 const drawerWidth = 240;
 
@@ -42,14 +47,17 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Party List', icon: <PeopleIcon />, path: '/party-list' },
   { text: 'Sauda', icon: <TrendingUpIcon />, path: '/sauda' },
-  { text: 'Invoice', icon: <ReceiptIcon />, path: '/invoice' },
-  { text: 'Sales Invoice', icon: <ShoppingCartIcon />, path: '/sales-invoice' },
   { text: 'Pagga List', icon: <InventoryIcon />, path: '/pagga-list' },
   { text: 'Case Book', icon: <AccountBalanceIcon />, path: '/case-book' },
   { text: 'Case', icon: <WorkIcon />, path: '/case' },
   { text: 'Credit/Debit Note', icon: <NoteAddIcon />, path: '/credit-debit-note' },
   // { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   // { text: 'Sauda Check', icon: <SettingsIcon />, path: '/sauda-check' },
+];
+
+const deliveryMenuItems = [
+  { text: 'Purchase Invoice', icon: <ReceiptIcon />, path: '/invoice' },
+  { text: 'Sales Invoice', icon: <ShoppingCartIcon />, path: '/sales-invoice' },
 ];
 
 const reportsMenuItems = [
@@ -59,11 +67,13 @@ const reportsMenuItems = [
 const NavBar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [deliveryOpen, setDeliveryOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
+  const { mode, toggleMode, modeColors: mc } = useThemeMode();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -83,28 +93,29 @@ const NavBar = ({ children }) => {
 
   const drawer = (
     <div>
-      <Toolbar sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+      <Toolbar sx={{ background: mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : gradients.primary, borderBottom: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.06)' : 'none' }}>
         <Typography variant="h6" noWrap component="div" sx={{ color: '#fff', fontWeight: 700 }}>
           BR Bullion
         </Typography>
       </Toolbar>
       <List sx={{ mt: 2 }}>
-        {menuItems.map((item) => (
+        {menuItems.slice(0, 2).map((item) => (
           <ListItem key={item.text} disablePadding>
             <ListItemButton
               onClick={() => handleNavigation(item.path)}
               selected={location.pathname === item.path}
               sx={{
                 '&.Mui-selected': {
-                  background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                  background: mode === 'dark' ? 'rgba(99, 102, 241, 0.15)' : gradients.primary,
+                  backdropFilter: mode === 'dark' ? 'blur(8px)' : 'none',
                   '& .MuiListItemIcon-root, & .MuiListItemText-root': {
-                    color: '#fff',
+                    color: mode === 'dark' ? '#818cf8' : '#fff',
                   },
                 },
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #818cf8 0%, #f472b6 100%)',
+                  background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
                   '& .MuiListItemIcon-root, & .MuiListItemText-root': {
-                    color: '#fff',
+                    color: mode === 'dark' ? '#818cf8' : '#fff',
                   },
                 },
                 mx: 1,
@@ -112,8 +123,93 @@ const NavBar = ({ children }) => {
                 mb: 1,
               }}
             >
-              <ListItemIcon sx={{ color: '#6366f1' }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} sx={{ color: '#424242', fontWeight: 500 }} />
+              <ListItemIcon sx={{ color: mc.iconColor }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} sx={{ color: mc.text.listItem, fontWeight: 500 }} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => setDeliveryOpen(!deliveryOpen)}
+            sx={{
+              '&:hover': {
+                background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
+                '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                  color: mode === 'dark' ? '#818cf8' : '#fff',
+                },
+              },
+              mx: 1,
+              borderRadius: 2,
+              mb: 1,
+            }}
+          >
+            <ListItemIcon sx={{ color: mc.iconColor }}>
+              <LocalShippingIcon />
+            </ListItemIcon>
+            <ListItemText primary="Delivery" sx={{ color: mc.text.listItem, fontWeight: 500 }} />
+            {deliveryOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </ListItemButton>
+        </ListItem>
+        <Collapse in={deliveryOpen} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            {deliveryMenuItems.map((item) => (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  onClick={() => handleNavigation(item.path)}
+                  selected={location.pathname === item.path}
+                  sx={{
+                    '&.Mui-selected': {
+                      background: mode === 'dark' ? 'rgba(99, 102, 241, 0.15)' : gradients.primary,
+                      backdropFilter: mode === 'dark' ? 'blur(8px)' : 'none',
+                      '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                        color: mode === 'dark' ? '#818cf8' : '#fff',
+                      },
+                    },
+                    '&:hover': {
+                      background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
+                      '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                        color: mode === 'dark' ? '#818cf8' : '#fff',
+                      },
+                    },
+                    pl: 4,
+                    mx: 1,
+                    borderRadius: 2,
+                    mb: 1,
+                  }}
+                >
+                  <ListItemIcon sx={{ color: mc.iconColor }}>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} sx={{ color: mc.text.listItem, fontWeight: 500 }} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Collapse>
+        {menuItems.slice(2).map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              onClick={() => handleNavigation(item.path)}
+              selected={location.pathname === item.path}
+              sx={{
+                '&.Mui-selected': {
+                  background: mode === 'dark' ? 'rgba(99, 102, 241, 0.15)' : gradients.primary,
+                  backdropFilter: mode === 'dark' ? 'blur(8px)' : 'none',
+                  '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                    color: mode === 'dark' ? '#818cf8' : '#fff',
+                  },
+                },
+                '&:hover': {
+                  background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
+                  '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                    color: mode === 'dark' ? '#818cf8' : '#fff',
+                  },
+                },
+                mx: 1,
+                borderRadius: 2,
+                mb: 1,
+              }}
+            >
+              <ListItemIcon sx={{ color: mc.iconColor }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} sx={{ color: mc.text.listItem, fontWeight: 500 }} />
             </ListItemButton>
           </ListItem>
         ))}
@@ -122,9 +218,9 @@ const NavBar = ({ children }) => {
             onClick={() => setReportsOpen(!reportsOpen)}
             sx={{
               '&:hover': {
-                background: 'linear-gradient(135deg, #818cf8 0%, #f472b6 100%)',
+                background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
                 '& .MuiListItemIcon-root, & .MuiListItemText-root': {
-                  color: '#fff',
+                  color: mode === 'dark' ? '#818cf8' : '#fff',
                 },
               },
               mx: 1,
@@ -132,10 +228,10 @@ const NavBar = ({ children }) => {
               mb: 1,
             }}
           >
-            <ListItemIcon sx={{ color: '#6366f1' }}>
+            <ListItemIcon sx={{ color: mc.iconColor }}>
               <ReportsIcon />
             </ListItemIcon>
-            <ListItemText primary="Reports" sx={{ color: '#424242', fontWeight: 500 }} />
+            <ListItemText primary="Reports" sx={{ color: mc.text.listItem, fontWeight: 500 }} />
             {reportsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
         </ListItem>
@@ -148,15 +244,16 @@ const NavBar = ({ children }) => {
                   selected={location.pathname === item.path}
                   sx={{
                     '&.Mui-selected': {
-                      background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                      background: mode === 'dark' ? 'rgba(99, 102, 241, 0.15)' : gradients.primary,
+                      backdropFilter: mode === 'dark' ? 'blur(8px)' : 'none',
                       '& .MuiListItemIcon-root, & .MuiListItemText-root': {
-                    color: '#fff',
+                    color: mode === 'dark' ? '#818cf8' : '#fff',
                   },
                 },
                 '&:hover': {
-                  background: 'linear-gradient(135deg, #818cf8 0%, #f472b6 100%)',
+                  background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
                   '& .MuiListItemIcon-root, & .MuiListItemText-root': {
-                    color: '#fff',
+                    color: mode === 'dark' ? '#818cf8' : '#fff',
                   },
                 },
                 pl: 4,
@@ -165,33 +262,13 @@ const NavBar = ({ children }) => {
                 mb: 1,
               }}
                 >
-                  <ListItemIcon sx={{ color: '#6366f1' }}>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.text} sx={{ color: '#424242', fontWeight: 500 }} />
+                  <ListItemIcon sx={{ color: mc.iconColor }}>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} sx={{ color: mc.text.listItem, fontWeight: 500 }} />
                 </ListItemButton>
               </ListItem>
             ))}
           </List>
         </Collapse>
-        <ListItem disablePadding sx={{ mt: 2 }}>
-          <ListItemButton
-            onClick={handleLogout}
-            sx={{
-              '&:hover': {
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                '& .MuiListItemIcon-root, & .MuiListItemText-root': {
-                  color: '#fff',
-                },
-              },
-              mx: 1,
-              borderRadius: 2,
-            }}
-          >
-            <ListItemIcon sx={{ color: '#ef4444' }}>
-              <LogoutIcon />
-            </ListItemIcon>
-            <ListItemText primary="Logout" sx={{ color: '#424242', fontWeight: 500 }} />
-          </ListItemButton>
-        </ListItem>
       </List>
     </div>
   );
@@ -203,8 +280,10 @@ const NavBar = ({ children }) => {
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
-          background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-          boxShadow: '0 4px 20px rgba(99, 102, 241, 0.3)',
+          background: mode === 'dark' ? 'rgba(15, 15, 26, 0.8)' : gradients.primary,
+          backdropFilter: mode === 'dark' ? 'blur(12px)' : 'none',
+          borderBottom: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+          boxShadow: mode === 'dark' ? 'none' : '0 4px 20px rgba(99, 102, 241, 0.3)',
         }}
       >
         <Toolbar>
@@ -220,6 +299,18 @@ const NavBar = ({ children }) => {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             BR Bullion Management
           </Typography>
+          <IconButton
+            color="inherit"
+            onClick={toggleMode}
+            title={mode === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+            sx={{
+              '&:hover': {
+                background: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
+            {mode === 'light' ? <DarkModeIcon /> : <LightModeIcon />}
+          </IconButton>
           <IconButton
             color="inherit"
             onClick={handleLogout}
@@ -258,7 +349,7 @@ const NavBar = ({ children }) => {
             '& .MuiDrawer-paper': { 
               boxSizing: 'border-box', 
               width: drawerWidth,
-              background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
+              background: mc.background.sidebar,
             },
           }}
           open

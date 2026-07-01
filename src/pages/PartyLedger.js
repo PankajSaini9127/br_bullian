@@ -29,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import partyService from '../services/partyService';
 import { printPartyLedger } from '../utils/thermalPrinter';
+import { gradients } from '../theme';
 
 const PartyLedger = () => {
   const [selectedParty, setSelectedParty] = useState(null);
@@ -232,7 +233,7 @@ const PartyLedger = () => {
               disabled={!selectedParty}
               sx={{
                 height: '56px',
-                background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                background: gradients.primary,
               }}
             >
               Fetch
@@ -246,7 +247,7 @@ const PartyLedger = () => {
                 onClick={handlePrint}
                 sx={{
                   height: '56px',
-                  background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
+                  background: gradients.success,
                 }}
               >
                 <PrintIcon />
@@ -259,7 +260,7 @@ const PartyLedger = () => {
           <TableContainer component={Paper} elevation={1}>
             <Table>
               <TableHead>
-                <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                <TableRow sx={{ background: gradients.primary }}>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Description</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Fine (g)</TableCell>
@@ -270,7 +271,7 @@ const PartyLedger = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                <TableRow sx={{ background: '#f5f5f5' }}>
+                <TableRow sx={{ background: 'rgba(0,0,0,0.04)' }}>
                   <TableCell>-</TableCell>
                   <TableCell><strong>Opening Balance</strong></TableCell>
                   <TableCell>-</TableCell>
@@ -321,30 +322,30 @@ const PartyLedger = () => {
                       <TableRow>
                         <TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
                           <Collapse in={expandedRows[idx]}>
-                            <Box sx={{ p: 2, background: '#f8fafc' }}>
+                            <Box sx={{ p: 2, background: 'background.default' }}>
                               {entry.type === 'crosscut' ? (
                                 <>
                                   <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Cross Cut Details</Typography>
                                   <Grid container spacing={2}>
                                     {entry.details?.map((detail, i) => (
                                       <Grid item xs={4} key={i}>
-                                        <Box sx={{ p: 2, background: '#fff', borderRadius: 1, border: '1px solid #e2e8f0', height: '100%' }}>
+                                        <Box sx={{ p: 2, background: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider', height: '100%' }}>
                                           <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>Source: {detail.sourceSaudaNo} ({detail.sourceSaudaType})</Typography>
                                           <Grid container spacing={1}>
                                             <Grid item xs={6}>
-                                              <Typography variant="body2" sx={{ color: '#64748b' }}>Qty:</Typography>
+                                              <Typography variant="body2" sx={{ color: 'text.secondary' }}>Qty:</Typography>
                                               <Typography variant="body2" sx={{ fontWeight: 600 }}>{detail.crosscutQuantity} g</Typography>
                                             </Grid>
                                             <Grid item xs={6}>
-                                              <Typography variant="body2" sx={{ color: '#64748b' }}>Source Rate:</Typography>
+                                              <Typography variant="body2" sx={{ color: 'text.secondary' }}>Source Rate:</Typography>
                                               <Typography variant="body2" sx={{ fontWeight: 600 }}>₹{detail.sourceRate?.toLocaleString('en-IN')}</Typography>
                                             </Grid>
                                             <Grid item xs={6}>
-                                              <Typography variant="body2" sx={{ color: '#64748b' }}>Target Rate:</Typography>
+                                              <Typography variant="body2" sx={{ color: 'text.secondary' }}>Target Rate:</Typography>
                                               <Typography variant="body2" sx={{ fontWeight: 600 }}>₹{detail.targetRate?.toLocaleString('en-IN')}</Typography>
                                             </Grid>
                                             <Grid item xs={6}>
-                                              <Typography variant="body2" sx={{ color: '#64748b' }}>P/L:</Typography>
+                                              <Typography variant="body2" sx={{ color: 'text.secondary' }}>P/L:</Typography>
                                               <Typography variant="body2" sx={{ fontWeight: 600, color: detail.profitLoss >= 0 ? '#10b981' : '#ef4444' }}>
                                                 ₹{detail.profitLoss?.toLocaleString('en-IN')}
                                               </Typography>
@@ -392,7 +393,7 @@ const PartyLedger = () => {
                                           {cut.isBhavCut === true ? (
                                             <Chip label="Bhav Cut" size="small" color="error" />
                                           ) : (
-                                            <Typography variant="body2" sx={{ color: '#64748b' }}>false</Typography>
+                                            <Typography variant="body2" sx={{ color: 'text.secondary' }}>false</Typography>
                                           )}
                                         </TableCell>
                                       </TableRow>
@@ -422,7 +423,7 @@ const PartyLedger = () => {
               <TableContainer component={Paper} elevation={1}>
                 <Table>
                   <TableHead>
-                    <TableRow sx={{ background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)' }}>
+                    <TableRow sx={{ background: gradients.warningLight }}>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda No</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Type</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
@@ -458,13 +459,13 @@ const PartyLedger = () => {
           )}
 
           {ledgerData && (
-            <Box sx={{ mt: 4, p: 3, background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderRadius: 2 }}>
+            <Box sx={{ mt: 4, p: 3, background: 'rgba(99, 102, 241, 0.04)', borderRadius: 2 }}>
               <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#6366f1' }}>
                 Closing Balance
               </Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12}>
-                  <Typography variant="body2" sx={{ color: '#64748b' }}>Balance</Typography>
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>Balance</Typography>
                   <Typography variant="h6" sx={{ fontWeight: 700, color: (totalDebit - totalCredit) < 0 ? '#ef4444' : '#10b981' }}>{(() => {
                           const bal = Math.trunc(totalDebit - totalCredit);
                           return bal !== 0 ? (bal > 0 ? bal + ' (dena hai)' : bal + ' (lena hai)') : bal;
@@ -476,7 +477,7 @@ const PartyLedger = () => {
 
           {selectedParty && !ledgerData && (
           <Box sx={{ mt: 4, textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ color: '#64748b' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               Select date range and click Fetch to view ledger
             </Typography>
           </Box>

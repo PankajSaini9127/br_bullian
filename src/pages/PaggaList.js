@@ -20,6 +20,7 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import paggaService from '../services/paggaService';
 import { roundOffFineFormatted } from '../utils/roundOff';
+import { gradients } from '../theme';
 
 const PaggaList = () => {
   const [paggaList, setPaggaList] = useState([]);
@@ -63,37 +64,32 @@ const PaggaList = () => {
   };
 
   return (
-    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
-      <Box sx={{ mb: 4 }}>
-        <Typography
-          variant="h4"
-          sx={{
-            mb: 2,
-            fontWeight: 700,
-            fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}
-        >
-          Pagga List
-        </Typography>
-      </Box>
+    <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 }, pt: { xs: 0.5, md: 1 }, pb: { xs: 2, md: 3 } }}>
+      <Typography
+        variant="h4"
+        sx={{
+          mb: 2.5,
+          fontWeight: 700,
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
+          background: gradients.primary,
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+        }}
+      >
+        Pagga List
+      </Typography>
 
       <Paper
         elevation={3}
         sx={{
-          p: 3,
+          p: { xs: 1.5, sm: 3 },
           borderRadius: 2,
           boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-          border: '1px solid #e2e8f0',
+          border: '1px solid', borderColor: 'divider',
         }}
       >
         {/* Search Section */}
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#424242' }}>
-            Search Filters
-          </Typography>
+        <Box sx={{ mb: 2.5 }}>
           <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} sm={9}>
               <TextField
@@ -113,10 +109,10 @@ const PaggaList = () => {
                 startIcon={<SearchIcon />}
                 onClick={handleSearch}
                 sx={{
-                  background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+                  background: gradients.primary,
                   boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                    background: gradients.primaryHover,
                   },
                 }}
               >
@@ -134,14 +130,11 @@ const PaggaList = () => {
         </Box>
 
         {/* Table Section */}
-        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#424242' }}>
-          Pagga Records
-        </Typography>
         {paggaList.length > 0 ? (
-          <TableContainer>
-            <Table>
+          <TableContainer sx={{ overflowX: 'auto' }}>
+            <Table sx={{ minWidth: 700, '& .MuiTableCell-root': { px: { xs: 1, sm: 2 }, py: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, whiteSpace: 'nowrap' } }}>
               <TableHead>
-                <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+                <TableRow sx={{ background: gradients.primary }}>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
@@ -156,11 +149,6 @@ const PaggaList = () => {
                 {paggaList.map((pagga, index) => (
                   <TableRow
                     key={pagga._id || pagga.id}
-                    sx={{
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                      },
-                    }}
                   >
                     <TableCell sx={{ fontWeight: 600 }}>
                       {(page - 1) * limit + index + 1}
@@ -190,7 +178,7 @@ const PaggaList = () => {
           </TableContainer>
         ) : (
           <Box sx={{ textAlign: 'center', py: 8 }}>
-            <Typography variant="body2" sx={{ color: '#64748b' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {loading ? 'Loading...' : 'No pagga records found'}
             </Typography>
           </Box>

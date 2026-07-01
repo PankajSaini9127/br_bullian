@@ -30,6 +30,7 @@ import {
   Search as SearchIcon,
 } from '@mui/icons-material';
 import partyService from '../services/partyService';
+import { gradients } from '../theme';
 
 const PartyList = () => {
   const [parties, setParties] = useState([]);
@@ -177,7 +178,7 @@ const PartyList = () => {
             mb: 2,
             fontWeight: 700,
             fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
-            background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+            background: gradients.primary,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -213,10 +214,10 @@ const PartyList = () => {
             startIcon={<AddIcon />}
             onClick={handleAddParty}
             sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
               '&:hover': {
-                background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                background: gradients.primaryHover,
                 boxShadow: '0 6px 16px rgba(99, 102, 241, 0.5)',
               },
             }}
@@ -231,13 +232,13 @@ const PartyList = () => {
         sx={{
           borderRadius: 2,
           boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-          border: '1px solid #e2e8f0',
+          border: '1px solid', borderColor: 'divider',
         }}
       >
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)' }}>
+              <TableRow sx={{ background: gradients.primary }}>
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
                 <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Contact No</TableCell>
@@ -251,11 +252,6 @@ const PartyList = () => {
               {parties.map((party, index) => (
                 <TableRow
                   key={party._id || party.id}
-                  sx={{
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                    },
-                  }}
                 >
                   <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
                   <TableCell sx={{ fontWeight: 500 }}>{party.partyName}</TableCell>
@@ -266,7 +262,7 @@ const PartyList = () => {
                       label={party.type}
                       size="small"
                       sx={{
-                        bgcolor: party.type === 'Customer' ? '#dbeafe' : '#fce7f3',
+                        bgcolor: party.type === 'Customer' ? 'rgba(219, 234, 254, 0.15)' : 'rgba(252, 231, 243, 0.15)',
                         color: party.type === 'Customer' ? '#1e40af' : '#be185d',
                         fontWeight: 600,
                       }}
@@ -279,14 +275,14 @@ const PartyList = () => {
                     <IconButton
                       size="small"
                       onClick={() => handleEditParty(party)}
-                      sx={{ color: '#6366f1', '&:hover': { background: '#e0e7ff' } }}
+                      sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
                     >
                       <EditIcon />
                     </IconButton>
                     <IconButton
                       size="small"
                       onClick={() => handleDeleteParty(party)}
-                      sx={{ color: '#ec4899', '&:hover': { background: '#fce7f3' } }}
+                      sx={{ color: '#ec4899', '&:hover': { background: 'rgba(236, 72, 153, 0.1)' } }}
                     >
                       <DeleteIcon />
                     </IconButton>
@@ -369,9 +365,9 @@ const PartyList = () => {
             onClick={handleSaveParty}
             variant="contained"
             sx={{
-              background: 'linear-gradient(135deg, #6366f1 0%, #ec4899 100%)',
+              background: gradients.primary,
               '&:hover': {
-                background: 'linear-gradient(135deg, #4338ca 0%, #be185d 100%)',
+                background: gradients.primaryHover,
               },
             }}
           >
@@ -395,7 +391,7 @@ const PartyList = () => {
             onClick={confirmDeleteParty}
             variant="contained"
             sx={{
-              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+              background: gradients.danger,
             }}
           >
             Delete
