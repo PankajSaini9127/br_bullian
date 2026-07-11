@@ -106,8 +106,6 @@ const Case = () => {
       const paymentType = tabValue === 0 ? 'incoming' : 'outgoing';
       const response = await caseService.getPayments({ paymentType }, page, limit);
       setCases(response?.payments || response?.data || []);
-
-      console.log(response)
       setTotalPages(response?.pagination?.totalPages || response?.totalPages || 1);
     } catch (error) {
       console.error('Error fetching cases:', error);
@@ -338,6 +336,7 @@ const Case = () => {
               size="small"
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
+              isOptionEqualToValue={(option, value) => option?._id === value?._id}
               value={selectedParty}
               onChange={(e, newValue) => {
                 setPartyId(newValue?._id || '');

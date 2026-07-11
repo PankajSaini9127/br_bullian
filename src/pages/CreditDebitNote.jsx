@@ -394,6 +394,7 @@ const CreditDebitNote = () => {
                   fullWidth
                   options={parties}
                   getOptionLabel={(option) => option.partyName || ''}
+                  isOptionEqualToValue={(option, value) => option?._id === value?._id}
                   value={parties.find((p) => p._id === formData.partyId) || null}
                   onChange={handlePartyChange}
                   renderInput={(params) => (

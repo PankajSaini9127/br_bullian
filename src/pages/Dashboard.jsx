@@ -277,7 +277,7 @@ const Dashboard = () => {
           <MetricCard
             title="Case in Hand"
             value={`\u20B9${Math.trunc(dashboardData.cashInHand.balanceAmount || 0).toLocaleString('en-IN')}`}
-            subtitle={`Bal Fine: ${Math.trunc(dashboardData.cashInHand.balanceFine || 0).toLocaleString('en-IN')}g`}
+            // subtitle={`Bal Fine: ${Math.trunc(dashboardData.cashInHand.balanceFine || 0).toLocaleString('en-IN')}g`}
             icon={<CaseInHandIcon />}
             color={(dashboardData.cashInHand.balanceAmount || 0) >= 0 ? '#0891b2' : '#ef4444'}
             gradient={(dashboardData.cashInHand.balanceAmount || 0) >= 0 ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : gradients.danger}

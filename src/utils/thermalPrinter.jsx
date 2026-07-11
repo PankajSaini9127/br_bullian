@@ -755,7 +755,7 @@ export async function printInvoiceThermal(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec < 0.5 ? 0 : 0.5);
+    const roundedFine = Math.floor(fine) + (dec < 0.45 ? 0 : dec < 0.9 ? 0.5 : 1);
     totalWt += wt;
     totalFine += roundedFine;
 
@@ -959,7 +959,7 @@ export async function printSalesInvoiceBluetooth(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec < 0.5 ? 0 : 0.5);
+    const roundedFine = Math.floor(fine) + (dec < 0.45 ? 0 : dec < 0.9 ? 0.5 : 1);
     totalWt += wt;
     totalFine += roundedFine;
 
@@ -1111,7 +1111,7 @@ export async function printInvoiceBluetooth(invoice) {
     const touch = parseFloat(item.touch) || 0;
     const fine = wt * touch / 100;
     const dec = fine % 1;
-    const roundedFine = Math.floor(fine) + (dec < 0.5 ? 0 : 0.5);
+    const roundedFine = Math.floor(fine) + (dec < 0.45 ? 0 : dec < 0.9 ? 0.5 : 1);
     totalWt += wt;
     totalFine += roundedFine;
 

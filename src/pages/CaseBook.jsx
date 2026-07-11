@@ -389,6 +389,7 @@ const CaseBook = () => {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Autocomplete
+              fullWidth
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
               value={selectedParty}

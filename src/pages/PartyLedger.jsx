@@ -81,8 +81,6 @@ const PartyLedger = () => {
       const response = await partyService.getPartyLedger(selectedParty._id, startDate, endDate);
       const data = response?.data || response;
 
-      console.log('Ledger data:', data)
-      console.log('Entries:', data?.entries)
       setLedgerData(data);
       toast.dismiss(toastId);
       toast.success('Ledger loaded successfully');
@@ -185,6 +183,7 @@ const PartyLedger = () => {
               sx={{ minWidth: { md: '200px' } }}
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
+              isOptionEqualToValue={(option, value) => option?._id === value?._id}
               value={selectedParty}
               onChange={(event, newValue) => {
                 setSelectedParty(newValue);
@@ -374,10 +373,7 @@ const PartyLedger = () => {
                                 </TableHead>
                                 <TableBody>
                                   {entry.saudaCuts.map((cut, i) => {
-                                    console.log(cut);
                                     const remainingFine = cut.quantity - (cut.delivered || 0);
-
-                                    console.log(remainingFine);
                                     return (
                                       <TableRow key={i}>
                                         <TableCell>{cut.saudaNo}</TableCell>
@@ -433,7 +429,6 @@ const PartyLedger = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                  {console.log(pendingSaudas)}
                     {pendingSaudas.map((sauda, i) => (
                       <TableRow key={i}>
                         <TableCell>{sauda.saudaNo}</TableCell>

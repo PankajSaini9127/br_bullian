@@ -53,6 +53,7 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import partyService from '../services/partyService';
 import saudaService from '../services/saudaService';
+import metalPaltaService from '../services/metalPaltaService';
 import { gradients } from '../theme';
 
 const Sauda = () => {
@@ -78,6 +79,7 @@ const Sauda = () => {
     quantity: '',
     rate: '',
     saudaType: 'purchase',
+    saudaCategory: 'kachi',
     isCrossCut: false,
     deliveredQuantity: '',
   });
@@ -140,7 +142,6 @@ const Sauda = () => {
       if (partySearchQuery) {
         try {
           const response = await partyService.searchParties(partySearchQuery);
-          console.log(response)
           setPartySearchResults(response?.data?.parties || []);
         } catch (error) {
           console.error('Error searching parties:', error);
@@ -211,6 +212,7 @@ const Sauda = () => {
       rate: '',
       amount: '',
       saudaType: tabValue,
+      saudaCategory: 'kachi',
       deliveredQuantity: '',
     });
   };
@@ -225,6 +227,7 @@ const Sauda = () => {
       rate: sauda.rate,
       amount: sauda.totalAmount || '',
       saudaType: sauda.saudaType || sauda.type || tabValue,
+      saudaCategory: sauda.saudaCategory || 'kachi',
       deliveredQuantity: sauda.deliveredQuantity || '',
     });
     setModalOpen(true);
@@ -241,14 +244,13 @@ const Sauda = () => {
       rate: '',
       amount: '',
       saudaType: 'purchase',
+      saudaCategory: 'kachi',
       deliveredQuantity: '',
       isCrossCut: false,
     });
   };
 
   const handleSaveSauda = async () => {
-
-    console.log("hererer",formData)
     if (!formData.partyId || !formData.saudaDate || !formData.quantity || !formData.rate) {
       toast.error('Please fill all required fields');
       return;
@@ -266,13 +268,12 @@ const Sauda = () => {
       rate: formData.rate,
       totalAmount,
       saudaType: formData.saudaType,
+      saudaCategory: formData.saudaCategory,
       delivered: formData.deliveredQuantity,
       isCrossCut: formData.isCrossCut,
     };
 
     try {
-
-      console.log(editingSauda)
       if (editingSauda) {
         await saudaService.updateSauda(editingSauda._id, saudaData);
         setSaudaList(saudaList.map((s) =>
@@ -643,9 +644,11 @@ const Sauda = () => {
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid item xs={12} md={4}>
                 <Autocomplete
+                  fullWidth
                   sx={{ minWidth: { md: '200px' } }}
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
+                  isOptionEqualToValue={(option, value) => option?._id === value?._id}
                   value={parties.find((p) => p._id === searchPartyId) || null}
                   onChange={(e, newValue) => {
                     setSearchPartyId(newValue?._id || '');
@@ -717,10 +720,12 @@ const Sauda = () => {
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Party Name</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Type</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Category</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sauda Date</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Quantity</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Rate</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Amount</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Status</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Delivered Qty</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600, width: '120px' }}>Actions</TableCell>
                   </TableRow>
@@ -747,6 +752,13 @@ const Sauda = () => {
                               color: sauda.saudaType === 'purchase' ? '#4338ca' : '#be185d',
                             },
                           }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={sauda.saudaCategory === 'chorsa-999' ? 'Chorsa 999' : sauda.saudaCategory === 'bank-9999' ? 'Bank 9999' : 'Kachi'}
+                          size="small"
+                          sx={{ fontWeight: 600, fontSize: '0.72rem' }}
                         />
                       </TableCell>
                       <TableCell>{formatDate(sauda.saudaDate)}</TableCell>
@@ -901,6 +913,7 @@ const Sauda = () => {
                 sx={{ minWidth: { md: '200px' } }}
                 options={partySearchQuery ? partySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
+                isOptionEqualToValue={(option, value) => option?._id === value?._id}
                 value={parties.find((p) => p._id === formData.partyId) || null}
                 onChange={(e, newValue) => {
                   if (newValue) {
@@ -942,6 +955,23 @@ const Sauda = () => {
                   />
                 )}
               />
+              <FormControl fullWidth sx={{ minWidth: { md: '200px' } }}>
+                <InputLabel>Sauda Category *</InputLabel>
+                <Select
+                  value={formData.saudaCategory}
+                  name="saudaCategory"
+                  onChange={handleInputChange}
+                  label="Sauda Category *"
+                  sx={{
+                    height: 56,
+                    borderRadius: 2,
+                  }}
+                >
+                  <MenuItem value="kachi">Kachi</MenuItem>
+                  <MenuItem value="chorsa-999">Chorsa 999</MenuItem>
+                  <MenuItem value="bank-9999">Bank 9999</MenuItem>
+                </Select>
+              </FormControl>
               <TextField
                 fullWidth
                 label="Sauda Date *"

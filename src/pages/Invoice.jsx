@@ -128,8 +128,6 @@ const Invoice = () => {
 
         const response = await invoiceService.getInvoices(params);
 
-        console.log("Invoices Response:", response);
-
         // Handle response structure: response.invoices and response.pagination
         let invoiceList = [];
         if (response && Array.isArray(response.invoices)) {
@@ -547,7 +545,6 @@ const Invoice = () => {
   const fetchPartySaudaSummary = async (partyId) => {
     try {
       const response = await partyService.getPartySaudaSummary(partyId);
-      console.log('Party Sauda Summary Response:', response);
       setPartySaudaSummary(response?.data || {});
     } catch (error) {
       console.error('Error fetching party sauda summary:', error);
@@ -886,7 +883,8 @@ const Invoice = () => {
     doc.text('Thank you for your business!', 40, yPosition + 22, { align: 'center' });
     
     // Save PDF
-    doc.save(`invoice-${invoice?.invoiceNo || 'unknown'}.pdf`);
+    const partyName = invoice?.partyId?.partyName || invoice?.partyName || 'invoice';
+    doc.save(`${partyName}-${invoice?.invoiceNo || 'unknown'}.pdf`);
   };
 
   return (
@@ -910,18 +908,7 @@ const Invoice = () => {
       {/* Invoice List - Show by default */}
       {!showAddForm && (
         <>
-          {/* Invoice List */}
-          {invoices.length > 0 ? (
-            <Paper
-              elevation={3}
-              sx={{
-                p: 3,
-                borderRadius: 2,
-                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-                border: '1px solid', borderColor: 'divider',
-              }}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
                   Invoice List
                 </Typography>
@@ -960,6 +947,18 @@ const Invoice = () => {
                 </Box>
               </Box>
 
+          {/* Invoice List */}
+          {invoices.length > 0 ? (
+            <Paper
+              elevation={3}
+              sx={{
+                p: 3,
+                borderRadius: 2,
+                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
+                border: '1px solid', borderColor: 'divider',
+              }}
+            >
+           
               {/* Filters */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={4}>
@@ -1009,9 +1008,11 @@ const Invoice = () => {
                 <Grid item xs={12} sm={4}>
                   <Autocomplete
                     loading={false}
+                    fullWidth
                     sx={{ minWidth: { md: '200px' } }}
                     options={partySearchQuery ? partySearchResults : parties}
                     getOptionLabel={(option) => option.partyName || ''}
+                    isOptionEqualToValue={(option, value) => option?._id === value?._id}
                     value={parties.find((p) => p._id === filterPartyId) || null}
                     onChange={(e, newValue) => {
                       setFilterPartyId(newValue?._id || '');
@@ -1251,6 +1252,7 @@ const Invoice = () => {
                   sx={{ minWidth: { md: '200px' } }}
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
+                  isOptionEqualToValue={(option, value) => option?._id === value?._id}
                   value={parties.find(p => p._id === selectedPartyId) || null}
                   onChange={(event, newValue) => {
                     setSelectedPartyId(newValue?._id || '');
@@ -1728,6 +1730,7 @@ const Invoice = () => {
               loading={false}
               options={parties}
               getOptionLabel={(option) => option.partyName || ''}
+              isOptionEqualToValue={(option, value) => option?._id === value?._id}
               value={parties.find((p) => p._id === editPartyId) || null}
               onChange={(e, newValue) => {
                 setEditPartyId(newValue?._id || '');
@@ -1912,9 +1915,11 @@ const Invoice = () => {
             <Grid item xs={12} md={6}>
               <Autocomplete
                 loading={false}
+                fullWidth
                 sx={{ minWidth: { md: '200px' } }}
                 options={partySearchQuery ? partySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
+                isOptionEqualToValue={(option, value) => option?._id === value?._id}
                 value={parties.find(p => p._id === returnPartyId) || null}
                 onChange={(event, newValue) => {
                   setReturnPartyId(newValue?._id || '');

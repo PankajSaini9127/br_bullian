@@ -37,6 +37,8 @@ import {
   LightMode as LightModeIcon,
   Person as PersonIcon,
   Business as BusinessIcon,
+  FactCheck as FactCheckIcon,
+  SwapHoriz as SwapHorizIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -53,6 +55,8 @@ const menuItems = [
   { text: 'Case Book', icon: <AccountBalanceIcon />, path: '/case-book' },
   { text: 'Case', icon: <WorkIcon />, path: '/case' },
   { text: 'Credit/Debit Note', icon: <NoteAddIcon />, path: '/credit-debit-note' },
+  { text: 'Stock Verification', icon: <FactCheckIcon />, path: '/stock-verification' },
+  { text: 'Metal Palta', icon: <SwapHorizIcon />, path: '/metal-palta' },
   // { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
   // { text: 'Sauda Check', icon: <SettingsIcon />, path: '/sauda-check' },
 ];

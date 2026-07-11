@@ -378,7 +378,6 @@ const SalesInvoice = () => {
   const fetchPartySaudaSummary = async (partyId) => {
     try {
       const response = await partyService.getPartySaudaSummary(partyId);
-      console.log('Party Sauda Summary Response:', response);
       setPartySaudaSummary(response?.data || {});
     } catch (error) {
       console.error('Error fetching party sauda summary:', error);
@@ -567,7 +566,8 @@ const SalesInvoice = () => {
     doc.setFont('helvetica', 'normal');
     doc.text('Thank you for your business!', 40, yPosition + 22, { align: 'center' });
 
-    doc.save(`sales-invoice-${invoice?.salesInvoiceNo || invoice._id}.pdf`);
+    const partyName = invoice?.partyId?.partyName || invoice?.partyName || 'invoice';
+    doc.save(`${partyName}-${invoice?.salesInvoiceNo || invoice._id}.pdf`);
   };
 
   const handleBluetoothPrintSalesInvoice = async (invoice) => {
@@ -584,9 +584,6 @@ const SalesInvoice = () => {
   };
 
   const handleEditSalesInvoice = async (invoice) => {
-
-    console.log('Editing invoice:', invoice);
-    console.log('Party ID:', invoice.partyId?._id || invoice.partyId);
     setEditingInvoice(invoice);
     setEditPartyId(invoice.partyId?._id || invoice.partyId);
     setEditInvoiceDate(invoice.invoiceDate);
@@ -932,6 +929,7 @@ const SalesInvoice = () => {
               loading={false}
               options={partySearchQuery ? partySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
+              isOptionEqualToValue={(option, value) => option?._id === value?._id}
               value={parties.find(p => p._id === selectedPartyId) || partySearchResults.find(p => p._id === selectedPartyId) || null}
               onChange={(event, newValue) => {
                 setSelectedPartyId(newValue?._id || '');
@@ -1004,12 +1002,14 @@ const SalesInvoice = () => {
                 sx={{ minWidth: 200 }}
               />
             </Grid>
-            <Grid item md={4}>
+            <Grid item xs={12} md={4}>
               <Autocomplete
                 loading={false}
+                fullWidth
                 sx={{ minWidth: { md: '200px' } }}
                 options={filterPartySearchQuery ? filterPartySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
+                isOptionEqualToValue={(option, value) => option?._id === value?._id}
                 value={parties.find(p => p._id === filterParty) || null}
                 onChange={(event, newValue) => {
                   setFilterParty(newValue?._id || '');
@@ -1152,6 +1152,7 @@ const SalesInvoice = () => {
                   loading={false}
                   options={partySearchQuery ? partySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
+                  isOptionEqualToValue={(option, value) => option?._id === value?._id}
                   value={parties.find(p => p._id === returnPartyId) || null}
                   onChange={async (event, newValue) => {
                     setReturnPartyId(newValue?._id || '');
@@ -1409,6 +1410,7 @@ const SalesInvoice = () => {
                   size="small"
                   options={filterPartySearchQuery ? filterPartySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
+                  isOptionEqualToValue={(option, value) => option?._id === value?._id}
                   value={parties.find((p) => p._id === filterPartyId) || null}
                   onChange={(e, newValue) => {
                     setFilterPartyId(newValue?._id || '');
@@ -1721,9 +1723,9 @@ const SalesInvoice = () => {
                 size="small"
                 options={editPartySearchQuery ? editPartySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
+                isOptionEqualToValue={(option, value) => option?._id === value?._id}
                 value={parties.find((p) => p._id === editPartyId) || null}
                 onChange={(e, newValue) => {
-                  console.log('Party changed to:', newValue);
                   setEditPartyId(newValue?._id || '');
                   setEditPartySearchQuery('');
                 }}
