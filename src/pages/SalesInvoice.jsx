@@ -31,6 +31,10 @@ import {
   Autocomplete,
   Tooltip,
   Stack,
+  LinearProgress,
+  Divider,
+  Collapse,
+  Alert,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -41,9 +45,13 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import BluetoothIcon from '@mui/icons-material/Bluetooth';
 import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
+import PendingIcon from '@mui/icons-material/HourglassEmpty';
+import ExpandMoreIcon from '@mui/icons-material/KeyboardArrowDown';
+import ExpandLessIcon from '@mui/icons-material/KeyboardArrowUp';
 import jsPDF from 'jspdf';
 import partyService from '../services/partyService';
 import salesInvoiceService from '../services/salesInvoiceService';
+import saudaService from '../services/saudaService';
 import { roundOffFine, roundOffFineFormatted } from '../utils/roundOff';
 import { printSalesInvoiceBluetooth } from '../utils/thermalPrinter';
 import { gradients } from '../theme';
@@ -54,6 +62,9 @@ const SalesInvoice = () => {
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [partySearchResults, setPartySearchResults] = useState([]);
   const [partySaudaSummary, setPartySaudaSummary] = useState(null);
+  const [pendingKachiGroups, setPendingKachiGroups] = useState([]);
+  const [loadingKachiPending, setLoadingKachiPending] = useState(false);
+  const [expandedKachiGroups, setExpandedKachiGroups] = useState({});
   const [excessFineModalOpen, setExcessFineModalOpen] = useState(false);
   const [excessWeight, setExcessWeight] = useState('');
   const [excessRate, setExcessRate] = useState('');
@@ -155,6 +166,25 @@ const SalesInvoice = () => {
     fetchAvailablePagga();
     fetchSalesInvoices();
   }, [filterStartDate, filterEndDate, filterPartyId, page, limit]);
+
+  useEffect(() => {
+    const fetchPendingKachi = async () => {
+      if (!selectedPartyId) {
+        setPendingKachiGroups([]);
+        return;
+      }
+      setLoadingKachiPending(true);
+      try {
+        const response = await saudaService.getPartyPendingKachiSaudas(selectedPartyId, 'sales');
+        setPendingKachiGroups(response?.groups || response?.data?.groups || []);
+      } catch (error) {
+        console.error('Error fetching pending kachi:', error);
+      } finally {
+        setLoadingKachiPending(false);
+      }
+    };
+    fetchPendingKachi();
+  }, [selectedPartyId]);
 
   useEffect(() => {
     const filtered = availablePagga.filter(pagga => {
@@ -989,6 +1019,190 @@ const SalesInvoice = () => {
           </Grid>
         </Grid>
 
+        {pendingKachiGroups.length > 0 && (
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, mt: 1 }}>
+                <PendingIcon sx={{ color: '#f59e0b', fontSize: 22 }} />
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                  Pending Kachi Saudas
+                </Typography>
+                {loadingKachiPending && (
+                  <LinearProgress sx={{ width: 80, ml: 1, borderRadius: 2 }} />
+                )}
+              </Box>
+
+              <Grid container spacing={2}>
+                {pendingKachiGroups.map((group) => {
+                  const groupKey = `${group.saudaType}`;
+                  const isExpanded = expandedKachiGroups[groupKey];
+                  const deliveredPct = group.totalQuantity > 0
+                    ? Math.round((group.totalDelivered / group.totalQuantity) * 100)
+                    : 0;
+                  const isBuy = group.saudaType === 'purchase';
+                  const cardColor = isBuy ? '#f59e0b' : '#3b82f6';
+
+                  return (
+                    <Grid item xs={12} md={6} key={groupKey}>
+                      <Paper
+                        elevation={2}
+                        sx={{
+                          borderRadius: 3,
+                          overflow: 'hidden',
+                          border: `2px solid ${cardColor}22`,
+                          boxShadow: `0 4px 16px ${cardColor}22`,
+                        }}
+                      >
+                        {/* Card Header */}
+                        <Box
+                          sx={{
+                            background: `linear-gradient(135deg, ${cardColor}dd, ${cardColor}99)`,
+                            px: 2.5,
+                            py: 1.5,
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Box>
+                            <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>
+                              {isBuy ? '🛒 Purchase (Kachi)' : '💰 Sales (Kachi)'}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                              {group.saudas.length} sauda{group.saudas.length > 1 ? 's' : ''} pending
+                            </Typography>
+                          </Box>
+                          <Box>
+                            {group.saudas.some(s => s.status === 'cross') && (
+                              <Chip label="Cross" color="warning" size="small" sx={{ mr: 1, backgroundColor: 'rgba(255,165,0,0.2)', color: '#fff' }} />
+                            )}
+                            <Chip
+                              label={`${group.totalRemaining} g remaining`}
+                              size="small"
+                              sx={{
+                                background: 'rgba(255,255,255,0.25)',
+                                color: '#fff',
+                                fontWeight: 700,
+                                backdropFilter: 'blur(4px)',
+                              }}
+                            />
+                          </Box>
+                        </Box>
+
+                        {/* Progress Bar */}
+                        <Box sx={{ px: 2.5, pt: 1.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                              Total: {group.totalQuantity} g
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: cardColor, fontWeight: 700 }}>
+                              Delivered: {group.totalDelivered} g ({deliveredPct}%)
+                            </Typography>
+                          </Box>
+                          <LinearProgress
+                            variant="determinate"
+                            value={deliveredPct}
+                            sx={{
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: `${cardColor}22`,
+                              '& .MuiLinearProgress-bar': {
+                                backgroundColor: cardColor,
+                                borderRadius: 4,
+                              },
+                            }}
+                          />
+                        </Box>
+
+                        {/* Expand/Collapse Toggle */}
+                        <Box
+                          sx={{
+                            px: 2.5,
+                            py: 1,
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() =>
+                            setExpandedKachiGroups((prev) => ({
+                              ...prev,
+                              [groupKey]: !prev[groupKey],
+                            }))
+                          }
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{ color: cardColor, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}
+                          >
+                            {isExpanded ? 'Hide details' : 'Show details'}
+                            {isExpanded ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
+                          </Typography>
+                        </Box>
+
+                        {/* Sauda Detail Rows */}
+                        <Collapse in={isExpanded}>
+                          <Divider />
+                          <Box sx={{ px: 2, pb: 1.5 }}>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Sauda No</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Date</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Qty (g)</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Delivered</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Remaining</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Rate</TableCell>
+                                  <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Status</TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {group.saudas.map((s) => (
+                                  <TableRow key={s._id} sx={{ '&:hover': { background: `${cardColor}11` } }}>
+                                    <TableCell sx={{ fontSize: '0.78rem', py: 0.75, fontWeight: 600, color: cardColor }}>#{s.saudaNo}</TableCell>
+                                    <TableCell sx={{ fontSize: '0.78rem', py: 0.75 }}>
+                                      {s.saudaDate ? new Date(s.saudaDate).toLocaleDateString('en-GB') : '-'}
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '0.78rem', py: 0.75 }}>{s.quantity}</TableCell>
+                                    <TableCell sx={{ fontSize: '0.78rem', py: 0.75, color: '#10b981', fontWeight: 600 }}>{s.delivered}</TableCell>
+                                    <TableCell sx={{ fontSize: '0.78rem', py: 0.75, color: '#ef4444', fontWeight: 700 }}>{s.remaining}</TableCell>
+                                    <TableCell sx={{ fontSize: '0.78rem', py: 0.75 }}>{s.rate || '-'}</TableCell>
+                                    <TableCell sx={{ py: 0.75 }}>
+                                      <Chip
+                                        label={s.status}
+                                        size="small"
+                                        sx={{
+                                          fontSize: '0.68rem',
+                                          fontWeight: 700,
+                                          backgroundColor: s.status === 'pending' ? '#fef3c7' : '#dbeafe',
+                                          color: s.status === 'pending' ? '#92400e' : '#1e40af',
+                                        }}
+                                      />
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Collapse>
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Grid>
+          </Grid>
+        )}
+
+        {selectedPartyId && !loadingKachiPending && pendingKachiGroups.length === 0 && (
+          <Grid container spacing={2} sx={{ mb: 2 }}>
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ mt: 1, mb: 1, borderRadius: 2 }}>
+                Is party ke koi pending kachi saudas nahi hain!
+              </Alert>
+            </Grid>
+          </Grid>
+        )}
+
         {/* Filters row */}
         <Box sx={{ mb: 1 }}>
           <Grid container spacing={2}>
@@ -1043,7 +1257,7 @@ const SalesInvoice = () => {
 
         <Box sx={{ flex: 1, overflow: 'auto' }}>
         <TableContainer component={Paper} elevation={1} sx={{ width: '100%' }}>
-          <Table stickyHeader>
+          <Table stickyHeader sx={{ minWidth: { xs: 800, sm: '100%' } }}>
             <TableHead>
               <TableRow sx={{ background: gradients.primary }}>
                 <TableCell padding="checkbox" sx={{ color: '#fff', fontWeight: 600 }}>
@@ -1247,7 +1461,7 @@ const SalesInvoice = () => {
 
             <Box sx={{ flex: 1, overflow: 'auto' }}>
             <TableContainer component={Paper} elevation={1}>
-              <Table stickyHeader>
+              <Table stickyHeader sx={{ minWidth: { xs: 800, sm: '100%' } }}>
                 <TableHead>
                   <TableRow sx={{ background: gradients.warning }}>
                     <TableCell padding="checkbox">
@@ -1353,60 +1567,43 @@ const SalesInvoice = () => {
             {/* Filters */}
             <Grid container spacing={2} sx={{ mb: 2 }}>
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel shrink>Start Date</InputLabel>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="startDate"
-                    type="date"
-                    value={filterStartDate}
-                    onChange={(e) => setFilterStartDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#818cf8',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#6366f1',
-                          borderWidth: 2,
-                        },
-                      },
-                    }}
-                  />
-                </FormControl>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="From Date"
+                  type="date"
+                  value={filterStartDate}
+                  onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': { borderColor: '#818cf8' },
+                      '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+                    },
+                  }}
+                />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <FormControl fullWidth size="small">
-                  <InputLabel shrink>End Date</InputLabel>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    name="endDate"
-                    type="date"
-                    value={filterEndDate}
-                    onChange={(e) => setFilterEndDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#818cf8',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#6366f1',
-                          borderWidth: 2,
-                        },
-                      },
-                    }}
-                  />
-                </FormControl>
+                <TextField
+                  fullWidth
+                  size="small"
+                  label="To Date"
+                  type="date"
+                  value={filterEndDate}
+                  onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }}
+                  InputLabelProps={{ shrink: true }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      '&:hover fieldset': { borderColor: '#818cf8' },
+                      '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
+                    },
+                  }}
+                />
               </Grid>
               <Grid item xs={12} sm={4}>
                 <Autocomplete
                   loading={false}
                   fullWidth
-                  sx={{ minWidth: { md: '200px' } }}
                   size="small"
                   options={filterPartySearchQuery ? filterPartySearchResults : parties}
                   getOptionLabel={(option) => option.partyName || ''}
@@ -1415,11 +1612,10 @@ const SalesInvoice = () => {
                   onChange={(e, newValue) => {
                     setFilterPartyId(newValue?._id || '');
                     setFilterPartySearchQuery('');
+                    setPage(1);
                   }}
                   onInputChange={(event, newInputValue, reason) => {
-                    if (reason === 'input') {
-                      setFilterPartySearchQuery(newInputValue);
-                    }
+                    if (reason === 'input') setFilterPartySearchQuery(newInputValue);
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -1428,13 +1624,8 @@ const SalesInvoice = () => {
                       InputLabelProps={{ shrink: true }}
                       sx={{
                         '& .MuiOutlinedInput-root': {
-                          '&:hover fieldset': {
-                            borderColor: '#818cf8',
-                          },
-                          '&.Mui-focused fieldset': {
-                            borderColor: '#6366f1',
-                            borderWidth: 2,
-                          },
+                          '&:hover fieldset': { borderColor: '#818cf8' },
+                          '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
                         },
                       }}
                     />
@@ -1453,10 +1644,7 @@ const SalesInvoice = () => {
                   sx={{
                     borderColor: '#6366f1',
                     color: '#6366f1',
-                    '&:hover': {
-                      borderColor: '#4338ca',
-                      background: 'rgba(99, 102, 241, 0.1)',
-                    },
+                    '&:hover': { borderColor: '#4338ca', background: 'rgba(99, 102, 241, 0.1)' },
                   }}
                 >
                   Reset Filters
@@ -1465,7 +1653,7 @@ const SalesInvoice = () => {
             </Grid>
           <Box sx={{ flex: 1, overflow: 'auto' }}>
           <TableContainer component={Paper} elevation={1}>
-            <Table stickyHeader>
+            <Table stickyHeader sx={{ minWidth: { xs: 800, sm: '100%' } }}>
               <TableHead>
                 <TableRow sx={{ background: gradients.primary }}>
                   <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Invoice No</TableCell>

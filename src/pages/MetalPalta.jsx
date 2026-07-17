@@ -24,6 +24,8 @@ import {
   Pagination,
   Autocomplete,
   Stack,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   Save as SaveIcon,
@@ -34,6 +36,7 @@ import {
 } from '@mui/icons-material';
 import partyService from '../services/partyService';
 import metalPaltaService from '../services/metalPaltaService';
+import pakkiService from '../services/pakkiService';
 import { roundOffFine, roundOffFineFormatted } from '../utils/roundOff';
 import { gradients } from '../theme';
 
@@ -41,6 +44,11 @@ const MetalPalta = () => {
   const [paltas, setPaltas] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [parties, setParties] = useState([]);
+  const [pakkiStock, setPakkiStock] = useState({
+    chorsaStock: 0, chorsaBuyWeight: 0, chorsaSellWeight: 0, chorsaBadlaWeight: 0, chorsaInitialStock: 0,
+    bankStock: 0, bankBuyWeight: 0, bankSellWeight: 0, bankInitialStock: 0,
+    latestVerificationDate: null
+  });
   const [partySearchQuery, setPartySearchQuery] = useState('');
   const [partySearchResults, setPartySearchResults] = useState([]);
   const [selectedPartyId, setSelectedPartyId] = useState('');
@@ -71,6 +79,19 @@ const MetalPalta = () => {
     fetchPaltas();
   }, [page, filterStartDate, filterEndDate]);
 
+  // Fetch chorsa/bank stock for display
+  useEffect(() => {
+    const fetchStock = async () => {
+      try {
+        const stock = await pakkiService.getPakkiStock();
+        setPakkiStock(stock);
+      } catch (error) {
+        console.error('Error fetching pakki stock:', error);
+      }
+    };
+    fetchStock();
+  }, []);
+
   useEffect(() => {
     const debounceTimer = setTimeout(async () => {
       if (partySearchQuery) {
@@ -88,6 +109,7 @@ const MetalPalta = () => {
   }, [partySearchQuery, parties]);
 
   useEffect(() => {
+    if (editId && items.length > 0 && items[0].weight) return; // Prevent overwriting populated items during edit
     const newItems = [];
     for (let i = 1; i <= paggaCount; i++) {
       const existingItem = items.find(item => item.id === i);
@@ -282,6 +304,7 @@ const MetalPalta = () => {
         date: paltaDate,
         saudaCategory: 'chorsa-999',
         items: filledItems.map(item => ({
+          _id: item._id,
           paggaNo: item.paggaNo,
           weight: parseFloat(item.weight) || 0,
           touch: parseFloat(item.touch) || 0,
@@ -319,13 +342,19 @@ const MetalPalta = () => {
     setSelectedPartyId(palta.partyId?._id || palta.partyId || '');
     setSelectedPartyName(palta.partyId?.partyName || palta.partyName || '');
     setPaltaDate(palta.date?.split('T')[0] || new Date().toISOString().split('T')[0]);
-    setItems((palta.items || []).map((item, i) => ({
-      id: i + 1,
-      paggaNo: item.paggaNo || '',
-      weight: item.weight?.toString() || '',
-      touch: item.touch?.toString() || '',
-      fine: item.fine?.toString() || '',
-    })));
+    setItems((palta.paggaIds || palta.items || []).map((item, i) => {
+      const w = parseFloat(item.weight) || 0;
+      const t = parseFloat(item.touch) || 0;
+      const calculatedFine = item.fine ? item.fine : (w > 0 && t > 0 ? (w * t / 100).toFixed(2) : '');
+      return {
+        _id: item._id,
+        id: i + 1,
+        paggaNo: item.paggaNo || '',
+        weight: item.weight?.toString() || '',
+        touch: item.touch?.toString() || '',
+        fine: calculatedFine.toString(),
+      };
+    }));
     setPaggaCount(palta.items?.length || 4);
     setPaltaPerKg(palta.paltaPerKg?.toString() || '8');
     setGivenSilver(palta.givenSilver?.toString() || '');
@@ -367,6 +396,107 @@ const MetalPalta = () => {
           Metal Palta
         </Typography>
       </Box>
+
+      {/* Stock Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        {/* Chorsa 999 Card */}
+        <Grid item xs={12} sm={6}>
+          <Card sx={{
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+            color: '#fff',
+            boxShadow: '0 8px 24px rgba(99,102,241,0.35)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <Box sx={{
+              position: 'absolute', top: -20, right: -20, width: 100, height: 100,
+              borderRadius: '50%', background: 'rgba(255,255,255,0.08)',
+            }} />
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, opacity: 0.95, letterSpacing: 0.5 }}>
+                  Chorsa 999 Stock
+                </Typography>
+                {pakkiStock.latestVerificationDate && (
+                  <Chip
+                    label={`Verified: ${new Date(pakkiStock.latestVerificationDate).toLocaleDateString('en-GB')}`}
+                    size="small"
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.65rem', height: 20 }}
+                  />
+                )}
+              </Box>
+              <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, letterSpacing: -1 }}>
+                {pakkiStock.chorsaStock.toFixed(2)}<Typography component="span" variant="h6" sx={{ fontWeight: 500, ml: 0.5, opacity: 0.85 }}>g</Typography>
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 }}>
+                <Box sx={{ background: 'rgba(255,255,255,0.12)', borderRadius: 2, p: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.75, display: 'block' }}>Opening</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{pakkiStock.chorsaInitialStock.toFixed(2)}g</Typography>
+                </Box>
+                <Box sx={{ background: 'rgba(255,255,255,0.12)', borderRadius: 2, p: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.75, display: 'block' }}>Buy</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#86efac' }}>{pakkiStock.chorsaBuyWeight.toFixed(2)}g</Typography>
+                </Box>
+                <Box sx={{ background: 'rgba(255,255,255,0.12)', borderRadius: 2, p: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.75, display: 'block' }}>Sell + Badla</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#fca5a5' }}>
+                    {(pakkiStock.chorsaSellWeight + pakkiStock.chorsaBadlaWeight).toFixed(2)}g
+                  </Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Bank 9999 Card */}
+        <Grid item xs={12} sm={6}>
+          <Card sx={{
+            borderRadius: 3,
+            background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+            color: '#fff',
+            boxShadow: '0 8px 24px rgba(236,72,153,0.35)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <Box sx={{
+              position: 'absolute', top: -20, right: -20, width: 100, height: 100,
+              borderRadius: '50%', background: 'rgba(255,255,255,0.08)',
+            }} />
+            <CardContent sx={{ p: 2.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 700, opacity: 0.95, letterSpacing: 0.5 }}>
+                  Bank 9999 Stock
+                </Typography>
+                {pakkiStock.latestVerificationDate && (
+                  <Chip
+                    label={`Verified: ${new Date(pakkiStock.latestVerificationDate).toLocaleDateString('en-GB')}`}
+                    size="small"
+                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.65rem', height: 20 }}
+                  />
+                )}
+              </Box>
+              <Typography variant="h3" sx={{ fontWeight: 800, mb: 2, letterSpacing: -1 }}>
+                {pakkiStock.bankStock.toFixed(2)}<Typography component="span" variant="h6" sx={{ fontWeight: 500, ml: 0.5, opacity: 0.85 }}>g</Typography>
+              </Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1 }}>
+                <Box sx={{ background: 'rgba(255,255,255,0.12)', borderRadius: 2, p: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.75, display: 'block' }}>Opening</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700 }}>{pakkiStock.bankInitialStock.toFixed(2)}g</Typography>
+                </Box>
+                <Box sx={{ background: 'rgba(255,255,255,0.12)', borderRadius: 2, p: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.75, display: 'block' }}>Buy</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#86efac' }}>{pakkiStock.bankBuyWeight.toFixed(2)}g</Typography>
+                </Box>
+                <Box sx={{ background: 'rgba(255,255,255,0.12)', borderRadius: 2, p: 1, textAlign: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.75, display: 'block' }}>Sell</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: '#fca5a5' }}>{pakkiStock.bankSellWeight.toFixed(2)}g</Typography>
+                </Box>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {!showAddForm && (
         <>
@@ -415,7 +545,7 @@ const MetalPalta = () => {
             </Grid>
 
             <TableContainer component={Paper} elevation={1} sx={{ maxHeight: '60vh', overflow: 'auto' }}>
-              <Table size="small" stickyHeader>
+              <Table size="small" stickyHeader sx={{ minWidth: { xs: 800, sm: '100%' } }}>
                 <TableHead>
                   <TableRow sx={{ background: gradients.primary }}>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
@@ -514,7 +644,7 @@ const MetalPalta = () => {
                 options={partySearchQuery ? partySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
                 isOptionEqualToValue={(option, value) => option?._id === value?._id}
-                value={parties.find(p => p._id === selectedPartyId) || null}
+                value={selectedPartyId ? { _id: selectedPartyId, partyName: selectedPartyName } : null}
                 onChange={(event, newValue) => {
                   setSelectedPartyId(newValue?._id || '');
                   setSelectedPartyName(newValue?.partyName || '');
@@ -566,7 +696,7 @@ const MetalPalta = () => {
             </Box>
 
             <TableContainer sx={{ overflowX: 'auto', '& .MuiTable-root': { minWidth: { xs: 600, sm: 'auto' } } }}>
-              <Table size="small">
+                <Table size="small" sx={{ minWidth: { xs: 800, sm: '100%' } }}>
                 <TableHead>
                   <TableRow sx={{ background: gradients.primary }}>
                     <TableCell sx={{ color: '#fff', fontWeight: 600, width: '50px' }}>Sr No</TableCell>
@@ -754,7 +884,7 @@ const MetalPalta = () => {
 
               <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>Pagga Details</Typography>
               <TableContainer component={Paper} elevation={1}>
-                <Table size="small">
+                  <Table size="small" sx={{ minWidth: { xs: 800, sm: '100%' } }}>
                   <TableHead>
                     <TableRow sx={{ background: gradients.primary }}>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
@@ -765,15 +895,20 @@ const MetalPalta = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {(selectedPalta.items || []).map((item, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{i + 1}</TableCell>
-                        <TableCell>{item.paggaNo || '-'}</TableCell>
-                        <TableCell>{item.weight || 0}</TableCell>
-                        <TableCell>{item.touch || 0}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{item.fine || 0}</TableCell>
-                      </TableRow>
-                    ))}
+                    {(selectedPalta.paggaIds || selectedPalta.items || []).map((item, i) => {
+                      const w = parseFloat(item.weight) || 0;
+                      const t = parseFloat(item.touch) || 0;
+                      const calculatedFine = item.fine ? item.fine : (w > 0 && t > 0 ? (w * t / 100).toFixed(2) : 0);
+                      return (
+                        <TableRow key={i}>
+                          <TableCell>{i + 1}</TableCell>
+                          <TableCell>{item.paggaNo || '-'}</TableCell>
+                          <TableCell>{item.weight || 0}</TableCell>
+                          <TableCell>{item.touch || 0}</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>{calculatedFine}</TableCell>
+                        </TableRow>
+                      );
+                    })}
                     <TableRow sx={{ background: 'rgba(99, 102, 241, 0.04)' }}>
                       <TableCell colSpan={3} sx={{ fontWeight: 700 }}>Total Fine</TableCell>
                       <TableCell sx={{ fontWeight: 700 }} colSpan={2}>{(selectedPalta.totalFine || 0).toFixed(2)} g</TableCell>

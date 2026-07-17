@@ -25,35 +25,47 @@ import {
   DialogContent,
   DialogActions,
   Pagination,
+  Card,
+  CardContent,
 } from '@mui/material';
 import {
   Inventory as InventoryIcon,
-  AccountBalanceWallet as CaseIcon,
   Save as SaveIcon,
   CheckCircle as CheckIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   List as ListIcon,
+  RestartAlt as ResetIcon,
+  KeyboardArrowDown as ExpandMoreIcon,
+  KeyboardArrowUp as ExpandLessIcon,
 } from '@mui/icons-material';
 import salesInvoiceService from '../services/salesInvoiceService';
 import stockVerificationService from '../services/stockVerificationService';
-import { roundOffFine, roundOffFineFormatted } from '../utils/roundOff';
+import pakkiService from '../services/pakkiService';
+import companyService from '../services/companyService';
+import caseService from '../services/caseService';
+import metalPaltaService from '../services/metalPaltaService';
 import { gradients } from '../theme';
+import { useThemeMode } from '../context/ThemeContext';
 
 const StockVerification = () => {
+  const { mode } = useThemeMode();
   const [tabValue, setTabValue] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState({
-    cashInHand: { openingBalance: 0, balanceWeight: 0, openingFine: 0, balanceFine: 0, balanceAmount: 0 },
-    stock: { totalPuggas: 0, totalFine: 0, openingFine: 0, balanceFine: 0 },
-    dukanStock: { totalPuggas: 0, totalFine: 0 },
+    cashInHand: { balanceAmount: 0, balanceFine999: 0 }
   });
-  const [verifiedStock, setVerifiedStock] = useState({});
-  const [verifiedDukan, setVerifiedDukan] = useState({});
+  const [verifiedChorsa999, setVerifiedChorsa999] = useState({ weight: '', remark: '' });
+  const [verifiedBank9999, setVerifiedBank9999] = useState({ weight: '', remark: '' });
+  const [chorsa999Stock, setChorsa999Stock] = useState({ buyWeight: 0, sellWeight: 0, netWeight: 0, buyPcs: 0, sellPcs: 0, netPcs: 0 });
+  const [bank9999Stock, setBank9999Stock] = useState({ buyWeight: 0, sellWeight: 0, netWeight: 0, buyPcs: 0, sellPcs: 0, netPcs: 0 });
+  const [cashBookData, setCashBookData] = useState({ totalIncoming: 0, totalOutgoing: 0, netCash: 0 });
   const [caseVerified, setCaseVerified] = useState({
     physicalBalance: '',
     physicalFine999: '',
     remark: '',
   });
+  const [companyProfile, setCompanyProfile] = useState({ openingFine: 0, openingFine9999: 0 });
   const [verificationDate, setVerificationDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [verifications, setVerifications] = useState([]);
@@ -61,32 +73,195 @@ const StockVerification = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [editId, setEditId] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleRow = (id) => {
+    setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  };
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const limit = 10;
 
   useEffect(() => {
     fetchData();
     fetchVerifications();
+    fetchPakkiStock();
+    fetchCompanyProfile();
   }, []);
 
   useEffect(() => {
-    if (tabValue === 2) {
+    if (tabValue === 1) {
       fetchVerifications();
     }
   }, [tabValue, page]);
 
+  const fetchCompanyProfile = async () => {
+    try {
+      const response = await companyService.getCompanies({ page: 1, limit: 1 });
+      const data = response?.data?.data || response?.data || {};
+      const list = data?.companies || data?.list || [];
+      if (list.length > 0) {
+        const c = list[0];
+        setCompanyProfile({ openingFine: c.openingFine || 0, openingFine9999: c.openingFine9999 || 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching company profile:', error);
+    }
+  };
+
   const fetchData = async () => {
     try {
-      const response = await salesInvoiceService.getDashboard();
-      const data = response?.data?.data || response?.data || {};
+      const [dashRes, cbRes] = await Promise.all([
+        salesInvoiceService.getDashboard(),
+        caseService.getCashBook()
+      ]);
+
+      const data = dashRes?.data?.data || dashRes?.data || {};
+      const cb = cbRes?.data || cbRes || {};
+
       setDashboardData({
-        cashInHand: data?.cashInHand || { openingBalance: 0, balanceWeight: 0, openingFine: 0, balanceFine: 0, balanceAmount: 0 },
-        stock: data?.stock || { totalPuggas: 0, totalFine: 0, openingFine: 0, balanceFine: 0 },
-        dukanStock: data?.dukanStock || { totalPuggas: 0, totalFine: 0 },
+        cashInHand: {
+          balanceAmount: data.cashInHand?.today || 0,
+          balanceFine999: data.kachiStock?.todayFine || 0
+        }
       });
+
+      setCashBookData({
+        totalIncoming: cb.incoming?.total || 0,
+        totalOutgoing: cb.outgoing?.total || 0,
+        netCash: cb.cashInHand || 0
+      });
+
+      // Pre-fill physical balance by default
+      setCaseVerified(prev => ({
+        ...prev,
+        physicalBalance: prev.physicalBalance || Math.trunc(cb.cashInHand || 0).toString()
+      }));
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load stock data');
+    }
+  };
+
+  const fetchPakkiStock = async () => {
+    try {
+      const [verificationsRes, companyProfileRes, buyRes, sellRes, badlaRes] = await Promise.all([
+        stockVerificationService.getVerifications({ page: 1, limit: 10 }),
+        companyService.getCompanies({ page: 1, limit: 1 }),
+        pakkiService.getPakkiList({ type: 'buy', limit: 9999 }),
+        pakkiService.getPakkiList({ type: 'sell', limit: 9999 }),
+        metalPaltaService.getMetalPaltas({ limit: 9999 })
+      ]);
+
+      const verificationsList = verificationsRes?.data?.records || verificationsRes?.records || [];
+      const latestVerification = verificationsList.length > 0 
+        ? [...verificationsList].sort((a, b) => new Date(b.date) - new Date(a.date))[0]
+        : null;
+
+      const companyData = companyProfileRes?.data?.data || companyProfileRes?.data || {};
+      const companyList = companyData?.companies || companyData?.list || [];
+      const profile = companyList.length > 0 ? companyList[0] : null;
+
+      const buyRecords = buyRes?.data?.records || [];
+      const sellRecords = sellRes?.data?.records || [];
+      const badlaRecords = badlaRes?.data?.data?.records || badlaRes?.data?.records || [];
+
+      const isAfterStart = (tx, startVerification, fallbackDateStr) => {
+        if (startVerification) {
+          const txDate = new Date(tx.date).setHours(0,0,0,0);
+          const vDate = new Date(startVerification.date).setHours(0,0,0,0);
+          if (txDate > vDate) return true;
+          if (txDate === vDate) {
+            return new Date(tx.createdAt) > new Date(startVerification.createdAt);
+          }
+          return false;
+        } else if (fallbackDateStr) {
+          const txDate = new Date(tx.date).setHours(0,0,0,0);
+          const fDate = new Date(fallbackDateStr).setHours(0,0,0,0);
+          return txDate >= fDate;
+        }
+        return true;
+      };
+
+      // Chorsa 999 Stock Calculation
+      let chorsaInitial = profile ? parseFloat(profile.openingFine) || 0 : 0;
+      let hasChorsaVerification = false;
+      if (latestVerification && latestVerification.chorsa999 && latestVerification.chorsa999.physicalWeight !== undefined && latestVerification.chorsa999.physicalWeight !== null) {
+        chorsaInitial = parseFloat(latestVerification.chorsa999.physicalWeight);
+        hasChorsaVerification = true;
+      }
+
+      const chorsaBuys = buyRecords.filter(r => 
+        r.chorsaType === 'chorsa-999' && 
+        isAfterStart(r, hasChorsaVerification ? latestVerification : null, profile?.openingFineDate)
+      );
+      const chorsaSells = sellRecords.filter(r => 
+        r.chorsaType === 'chorsa-999' && 
+        isAfterStart(r, hasChorsaVerification ? latestVerification : null, profile?.openingFineDate)
+      );
+      const chorsaBadlas = badlaRecords.filter(r => 
+        !r.isDeleted && 
+        isAfterStart(r, hasChorsaVerification ? latestVerification : null, profile?.openingFineDate)
+      );
+
+      let chorsaBuyWeight = chorsaBuys.reduce((sum, r) => sum + (parseFloat(r.weight) || 0), 0);
+      let chorsaSellWeight = chorsaSells.reduce((sum, r) => sum + (parseFloat(r.weight) || 0), 0);
+      let chorsaBadlaWeight = chorsaBadlas.reduce((sum, r) => sum + (parseFloat(r.givenSilver) || 0), 0);
+
+      let chorsaBuyPcs = chorsaBuys.reduce((sum, r) => sum + (parseInt(r.pcs) || 0), 0);
+      let chorsaSellPcs = chorsaSells.reduce((sum, r) => sum + (parseInt(r.pcs) || 0), 0);
+
+      const chorsaNetWeight = chorsaInitial + chorsaBuyWeight - chorsaSellWeight - chorsaBadlaWeight;
+      const chorsaNetPcs = chorsaBuyPcs - chorsaSellPcs;
+
+      setChorsa999Stock({
+        buyWeight: chorsaBuyWeight,
+        sellWeight: chorsaSellWeight + chorsaBadlaWeight,
+        netWeight: chorsaNetWeight,
+        buyPcs: chorsaBuyPcs,
+        sellPcs: chorsaSellPcs,
+        netPcs: chorsaNetPcs
+      });
+
+      // Bank 9999 Stock Calculation
+      let bankInitial = profile ? parseFloat(profile.openingFine9999) || 0 : 0;
+      let hasBankVerification = false;
+      if (latestVerification && latestVerification.bank9999 && latestVerification.bank9999.physicalWeight !== undefined && latestVerification.bank9999.physicalWeight !== null) {
+        bankInitial = parseFloat(latestVerification.bank9999.physicalWeight);
+        hasBankVerification = true;
+      }
+
+      const bankBuys = buyRecords.filter(r => 
+        r.chorsaType === 'bank-9999' && 
+        isAfterStart(r, hasBankVerification ? latestVerification : null, profile?.openingFine9999Date)
+      );
+      const bankSells = sellRecords.filter(r => 
+        r.chorsaType === 'bank-9999' && 
+        isAfterStart(r, hasBankVerification ? latestVerification : null, profile?.openingFine9999Date)
+      );
+
+      let bankBuyWeight = bankBuys.reduce((sum, r) => sum + (parseFloat(r.weight) || 0), 0);
+      let bankSellWeight = bankSells.reduce((sum, r) => sum + (parseFloat(r.weight) || 0), 0);
+
+      let bankBuyPcs = bankBuys.reduce((sum, r) => sum + (parseInt(r.pcs) || 0), 0);
+      let bankSellPcs = bankSells.reduce((sum, r) => sum + (parseInt(r.pcs) || 0), 0);
+
+      const bankNetWeight = bankInitial + bankBuyWeight - bankSellWeight;
+      const bankNetPcs = bankBuyPcs - bankSellPcs;
+
+      setBank9999Stock({
+        buyWeight: bankBuyWeight,
+        sellWeight: bankSellWeight,
+        netWeight: bankNetWeight,
+        buyPcs: bankBuyPcs,
+        sellPcs: bankSellPcs,
+        netPcs: bankNetPcs
+      });
+
+      // Pre-fill physical values by default
+      setVerifiedChorsa999(prev => ({ ...prev, weight: prev.weight || chorsaNetWeight.toFixed(2) }));
+      setVerifiedBank9999(prev => ({ ...prev, weight: prev.weight || bankNetWeight.toFixed(2) }));
+    } catch (error) {
+      console.error('Error fetching pakki stock:', error);
     }
   };
 
@@ -101,12 +276,26 @@ const StockVerification = () => {
     }
   };
 
-  const handleStockVerifyChange = (paggaId, field, value) => {
-    setVerifiedStock(prev => ({ ...prev, [paggaId]: { ...prev[paggaId], [field]: value } }));
-  };
+  // Pre-fill cash fields by default when dashboardData loads
+  useEffect(() => {
+    if (dashboardData.cashInHand.balanceAmount) {
+      setCaseVerified(prev => ({
+        ...prev,
+        physicalBalance: prev.physicalBalance || dashboardData.cashInHand.balanceAmount.toString(),
+        physicalFine999: prev.physicalFine999 || dashboardData.cashInHand.balanceFine999.toString(),
+      }));
+    }
+  }, [dashboardData]);
 
-  const handleDukanVerifyChange = (paggaId, field, value) => {
-    setVerifiedDukan(prev => ({ ...prev, [paggaId]: { ...prev[paggaId], [field]: value } }));
+  const handlePreFillSystemValues = () => {
+    setVerifiedChorsa999({ weight: chorsa999Stock.netWeight.toFixed(2), remark: '' });
+    setVerifiedBank9999({ weight: bank9999Stock.netWeight.toFixed(2), remark: '' });
+    setCaseVerified({
+      physicalBalance: Math.trunc(cashBookData.netCash).toString(),
+      physicalFine999: '0',
+      remark: '',
+    });
+    toast.info('Pre-filled all fields with live system values');
   };
 
   const buildPayload = () => {
@@ -115,9 +304,31 @@ const StockVerification = () => {
       physicalFine999: parseFloat(caseVerified.physicalFine999) || 0,
       physicalBalance: parseFloat(caseVerified.physicalBalance) || 0,
       remark: caseVerified.remark || '',
+      chorsa999: {
+        systemWeight: chorsa999Stock.netWeight,
+        systemPcs: chorsa999Stock.netPcs,
+        systemBuy: chorsa999Stock.buyWeight,
+        systemSell: chorsa999Stock.sellWeight,
+        physicalWeight: parseFloat(verifiedChorsa999.weight) || 0,
+        remark: verifiedChorsa999.remark || '',
+      },
+      bank9999: {
+        systemWeight: bank9999Stock.netWeight,
+        systemPcs: bank9999Stock.netPcs,
+        systemBuy: bank9999Stock.buyWeight,
+        systemSell: bank9999Stock.sellWeight,
+        physicalWeight: parseFloat(verifiedBank9999.weight) || 0,
+        remark: verifiedBank9999.remark || '',
+      },
+      cash: {
+        systemIn: cashBookData.totalIncoming,
+        systemOut: cashBookData.totalOutgoing,
+        systemNet: cashBookData.netCash,
+        physicalBalance: parseFloat(caseVerified.physicalBalance) || 0,
+        remark: caseVerified.remark || ''
+      }
     };
   };
-
 
   const handleSaveVerification = async () => {
     const toastId = toast.loading('Saving verification...');
@@ -129,16 +340,16 @@ const StockVerification = () => {
         await stockVerificationService.createVerification(payload);
       }
       toast.dismiss(toastId);
-      toast.success('Verification saved successfully');
-      setCaseVerified({ physicalBalance: '', physicalFine999: '', remark: '' });
+      toast.success('Stock Verification saved successfully');
       setEditId(null);
       fetchVerifications();
+      fetchPakkiStock();
+      fetchData();
     } catch (error) {
       toast.dismiss(toastId);
       toast.error('Failed to save verification');
     }
   };
-
 
   const handleEdit = (record) => {
     setEditId(record._id);
@@ -148,7 +359,16 @@ const StockVerification = () => {
       physicalFine999: record.physicalFine999?.toString() || '',
       remark: record.remark || '',
     });
-    setTabValue(1);
+    setVerifiedChorsa999({
+      weight: record.chorsa999?.physicalWeight?.toString() || '',
+      remark: record.chorsa999?.remark || '',
+    });
+    setVerifiedBank9999({
+      weight: record.bank9999?.physicalWeight?.toString() || '',
+      remark: record.bank9999?.remark || '',
+    });
+    setTabValue(0);
+    toast.info('Editing verification record. Make changes below.');
   };
 
   const handleDeleteClick = (id) => {
@@ -174,38 +394,40 @@ const StockVerification = () => {
   const handleCancelEdit = () => {
     setEditId(null);
     setCaseVerified({ physicalBalance: '', physicalFine999: '', remark: '' });
+    setVerifiedChorsa999({ weight: '', remark: '' });
+    setVerifiedBank9999({ weight: '', remark: '' });
     setVerificationDate(new Date().toISOString().split('T')[0]);
+    fetchPakkiStock();
+    fetchData();
   };
 
-  const SummaryCard = ({ title, systemValue, physicalValue, diff, unit }) => (
-    <Paper sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-      <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'text.secondary' }}>
-        {title}
-      </Typography>
-      <Stack spacing={1}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>System:</Typography>
-          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-            {systemValue} {unit}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Physical:</Typography>
-          <Typography variant="body1" sx={{ fontWeight: 600 }}>
-            {physicalValue || '-'} {unit}
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Difference:</Typography>
-          <Chip
-            label={diff !== null ? `${diff > 0 ? '+' : ''}${diff} ${unit}` : '-'}
-            size="small"
-            color={diff === null ? 'default' : diff === 0 ? 'success' : diff > 0 ? 'info' : 'error'}
-            sx={{ fontWeight: 600 }}
-          />
-        </Box>
-      </Stack>
-    </Paper>
+  const ComparisonCard = ({ title, systemValue, physicalValue, diff, unit, color }) => (
+    <Card sx={{ borderRadius: 3, borderLeft: `6px solid ${color}`, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', background: mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#fff' }}>
+      <CardContent sx={{ p: 2 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.secondary', mb: 1.5 }}>
+          {title}
+        </Typography>
+        <Stack spacing={1}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>System:</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{systemValue} {unit}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>Physical:</Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>{physicalValue || '-'} {unit}</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 0.5 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>Diff:</Typography>
+            <Chip
+              label={diff !== null ? `${diff > 0 ? '+' : ''}${diff} ${unit}` : '-'}
+              size="small"
+              color={diff === null ? 'default' : diff === 0 ? 'success' : diff > 0 ? 'info' : 'error'}
+              sx={{ fontWeight: 600, height: 20, fontSize: '0.75rem' }}
+            />
+          </Box>
+        </Stack>
+      </CardContent>
+    </Card>
   );
 
   return (
@@ -234,10 +456,9 @@ const StockVerification = () => {
       </Box>
 
       <Paper sx={{ borderRadius: 2, p: { xs: 1.5, sm: 2, md: 3 }, mb: 2 }}>
-        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ mb: 2 }}>
-          <Tab icon={<InventoryIcon />} label="Fine Stock" />
-          <Tab icon={<CaseIcon />} label="Case (Cash)" />
-          <Tab icon={<ListIcon />} label="Verification List" />
+        <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)} sx={{ mb: 3 }}>
+          <Tab icon={<InventoryIcon />} label="Verify Stock & Cash" />
+          <Tab icon={<ListIcon />} label="Verification History" />
         </Tabs>
 
         {tabValue === 0 && (
@@ -248,147 +469,181 @@ const StockVerification = () => {
                 <Button size="small" onClick={handleCancelEdit} sx={{ color: '#ef4444' }}>Cancel Edit</Button>
               </Box>
             )}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6} md={4}>
-                <SummaryCard
-                  title="Stock - Total Paggas"
-                  systemValue={dashboardData.stock.totalPuggas}
-                  physicalValue={Object.keys(verifiedStock).length}
-                  diff={Object.keys(verifiedStock).length - dashboardData.stock.totalPuggas}
-                  unit=""
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <SummaryCard
-                  title="Stock - Total Fine"
-                  systemValue={dashboardData.stock.totalFine}
-                  physicalValue={Object.values(verifiedStock).reduce((sum, v) => {
-                    const w = parseFloat(v.weight) || 0;
-                    const t = parseFloat(v.touch) || 0;
-                    return sum + roundOffFine(w * t / 100);
-                  }, 0).toFixed(2)}
-                  diff={null}
-                  unit="g"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <SummaryCard
-                  title="Dukan Stock - Total Paggas"
-                  systemValue={dashboardData.dukanStock.totalPuggas}
-                  physicalValue={Object.keys(verifiedDukan).length}
-                  diff={Object.keys(verifiedDukan).length - dashboardData.dukanStock.totalPuggas}
-                  unit=""
-                />
+
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                {/* Cash Balance Section */}
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, color: 'text.primary' }}>
+                  Cash Balance
+                </Typography>
+                <TableContainer component={Paper} elevation={1} sx={{ mb: 4, border: '1px solid', borderColor: 'divider' }}>
+                  <Table size="small" sx={{ minWidth: { xs: 800, sm: '100%' } }}>
+                    <TableHead>
+                      <TableRow sx={{ background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)' }}>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Buy (In)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Sell (Out)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Net Stock (Cash)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Cash (₹)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Diff (₹)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Remark</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>₹{Math.trunc(cashBookData.totalIncoming).toLocaleString('en-IN')}</TableCell>
+                        <TableCell>₹{Math.trunc(cashBookData.totalOutgoing).toLocaleString('en-IN')}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>₹{Math.trunc(cashBookData.netCash).toLocaleString('en-IN')}</TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="Cash Balance"
+                            value={caseVerified.physicalBalance}
+                            onChange={(e) => setCaseVerified(prev => ({ ...prev, physicalBalance: e.target.value }))}
+                            sx={{ width: 140 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: (caseVerified.physicalBalance ? parseFloat(caseVerified.physicalBalance) - cashBookData.netCash : 0) >= 0 ? '#10b981' : '#ef4444' }}>
+                          {caseVerified.physicalBalance
+                            ? `₹${Math.trunc(parseFloat(caseVerified.physicalBalance) - cashBookData.netCash).toLocaleString('en-IN')}`
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            placeholder="Remark"
+                            value={caseVerified.remark}
+                            onChange={(e) => setCaseVerified(prev => ({ ...prev, remark: e.target.value }))}
+                            fullWidth
+                          />
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Chorsa Section */}
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, color: 'text.primary' }}>
+                  Chorsa 999 Stock
+                </Typography>
+                <TableContainer component={Paper} elevation={1} sx={{ mb: 4, border: '1px solid', borderColor: 'divider' }}>
+                  <Table size="small" sx={{ minWidth: { xs: 800, sm: '100%' } }}>
+                    <TableHead>
+                      <TableRow sx={{ background: gradients.primary }}>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Buy</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Sell</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Net Stock</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Weight (g)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Diff (g)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Remark</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>{chorsa999Stock.buyWeight.toFixed(1)}g</TableCell>
+                        <TableCell>{chorsa999Stock.sellWeight.toFixed(1)}g</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{chorsa999Stock.netWeight.toFixed(1)}g</TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="Weight"
+                            value={verifiedChorsa999.weight}
+                            onChange={(e) => setVerifiedChorsa999(prev => ({ ...prev, weight: e.target.value }))}
+                            sx={{ width: 140 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: (verifiedChorsa999.weight ? parseFloat(verifiedChorsa999.weight) - chorsa999Stock.netWeight : 0) >= 0 ? '#6366f1' : '#ef4444' }}>
+                          {verifiedChorsa999.weight
+                            ? `${(parseFloat(verifiedChorsa999.weight) - chorsa999Stock.netWeight).toFixed(1)}g`
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            placeholder="Remark"
+                            value={verifiedChorsa999.remark}
+                            onChange={(e) => setVerifiedChorsa999(prev => ({ ...prev, remark: e.target.value }))}
+                            fullWidth
+                          />
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Bank Section */}
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5, color: 'text.primary' }}>
+                  Bank 9999 Stock
+                </Typography>
+                <TableContainer component={Paper} elevation={1} sx={{ mb: 3, border: '1px solid', borderColor: 'divider' }}>
+                  <Table size="small" sx={{ minWidth: { xs: 800, sm: '100%' } }}>
+                    <TableHead>
+                      <TableRow sx={{ background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)' }}>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Buy</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Sell</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Net Stock</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Weight (g)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Diff (g)</TableCell>
+                        <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Remark</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell>{bank9999Stock.buyWeight.toFixed(1)}g</TableCell>
+                        <TableCell>{bank9999Stock.sellWeight.toFixed(1)}g</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{bank9999Stock.netWeight.toFixed(1)}g</TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            type="number"
+                            placeholder="Weight"
+                            value={verifiedBank9999.weight}
+                            onChange={(e) => setVerifiedBank9999(prev => ({ ...prev, weight: e.target.value }))}
+                            sx={{ width: 140 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, color: (verifiedBank9999.weight ? parseFloat(verifiedBank9999.weight) - bank9999Stock.netWeight : 0) >= 0 ? '#ec4899' : '#ef4444' }}>
+                          {verifiedBank9999.weight
+                            ? `${(parseFloat(verifiedBank9999.weight) - bank9999Stock.netWeight).toFixed(1)}g`
+                            : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            placeholder="Remark"
+                            value={verifiedBank9999.remark}
+                            onChange={(e) => setVerifiedBank9999(prev => ({ ...prev, remark: e.target.value }))}
+                            fullWidth
+                          />
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
               </Grid>
             </Grid>
 
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
-              Fine Stock Verification
-            </Typography>
-            <TableContainer component={Paper} elevation={1} sx={{ mb: 3 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ background: gradients.primary }}>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Weight (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Touch (%)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Fine (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Weight (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Touch (%)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Fine (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Difference (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Remark</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>1</TableCell>
-                    <TableCell>{dashboardData.stock.totalPuggas} paggas</TableCell>
-                    <TableCell>-</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{dashboardData.stock.totalFine}g</TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" placeholder="Weight" value={verifiedStock['stock']?.weight || ''} onChange={(e) => handleStockVerifyChange('stock', 'weight', e.target.value)} sx={{ width: 100 }} />
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" placeholder="Touch" value={verifiedStock['stock']?.touch || ''} onChange={(e) => handleStockVerifyChange('stock', 'touch', e.target.value)} sx={{ width: 80 }} />
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      {verifiedStock['stock']?.weight && verifiedStock['stock']?.touch
-                        ? roundOffFineFormatted(parseFloat(verifiedStock['stock'].weight) * parseFloat(verifiedStock['stock'].touch) / 100)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {verifiedStock['stock']?.weight && verifiedStock['stock']?.touch
-                        ? (roundOffFine(parseFloat(verifiedStock['stock'].weight) * parseFloat(verifiedStock['stock'].touch) / 100) - dashboardData.stock.totalFine).toFixed(2)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" placeholder="Remark" value={verifiedStock['stock']?.remark || ''} onChange={(e) => handleStockVerifyChange('stock', 'remark', e.target.value)} sx={{ width: 120 }} />
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <Typography variant="h6" sx={{ fontWeight: 600, mb: 2, color: 'text.primary' }}>
-              Dukan Stock Verification
-            </Typography>
-            <TableContainer component={Paper} elevation={1} sx={{ mb: 3 }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ background: gradients.purple }}>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Weight (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Touch (%)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>System Fine (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Weight (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Touch (%)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Fine (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Difference (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Remark</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  <TableRow>
-                    <TableCell>1</TableCell>
-                    <TableCell>{dashboardData.dukanStock.totalPuggas} paggas</TableCell>
-                    <TableCell>-</TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{dashboardData.dukanStock.totalFine}g</TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" placeholder="Weight" value={verifiedDukan['dukan']?.weight || ''} onChange={(e) => handleDukanVerifyChange('dukan', 'weight', e.target.value)} sx={{ width: 100 }} />
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" type="number" placeholder="Touch" value={verifiedDukan['dukan']?.touch || ''} onChange={(e) => handleDukanVerifyChange('dukan', 'touch', e.target.value)} sx={{ width: 80 }} />
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>
-                      {verifiedDukan['dukan']?.weight && verifiedDukan['dukan']?.touch
-                        ? roundOffFineFormatted(parseFloat(verifiedDukan['dukan'].weight) * parseFloat(verifiedDukan['dukan'].touch) / 100)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      {verifiedDukan['dukan']?.weight && verifiedDukan['dukan']?.touch
-                        ? (roundOffFine(parseFloat(verifiedDukan['dukan'].weight) * parseFloat(verifiedDukan['dukan'].touch) / 100) - dashboardData.dukanStock.totalFine).toFixed(2)
-                        : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <TextField size="small" placeholder="Remark" value={verifiedDukan['dukan']?.remark || ''} onChange={(e) => handleDukanVerifyChange('dukan', 'remark', e.target.value)} sx={{ width: 120 }} />
-                    </TableCell>
-                  </TableRow>
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+            {/* Bottom Actions Row */}
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+              <Button
+                variant="outlined"
+                startIcon={<ResetIcon />}
+                onClick={handlePreFillSystemValues}
+                sx={{ borderRadius: 2 }}
+              >
+                Reset to Live System Values
+              </Button>
               <Button
                 variant="contained"
-                startIcon={<SaveIcon />}
+                startIcon={<CheckIcon />}
                 onClick={handleSaveVerification}
                 sx={{
                   background: gradients.successDark,
                   boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
                   '&:hover': { background: gradients.successDarkHover },
                   px: 4,
-                  py: 1.5,
+                  borderRadius: 2,
                 }}
               >
                 {editId ? 'Update Verification' : 'Save Verification'}
@@ -399,165 +654,146 @@ const StockVerification = () => {
 
         {tabValue === 1 && (
           <Box>
-            {editId && (
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Chip label="Editing existing verification" color="warning" size="small" />
-                <Button size="small" onClick={handleCancelEdit} sx={{ color: '#ef4444' }}>Cancel Edit</Button>
-              </Box>
-            )}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6} md={4}>
-                <SummaryCard
-                  title="Balance Amount"
-                  systemValue={Math.trunc(dashboardData.cashInHand.balanceAmount || 0).toLocaleString('en-IN')}
-                  physicalValue={caseVerified.physicalBalance ? Math.trunc(parseFloat(caseVerified.physicalBalance)).toLocaleString('en-IN') : ''}
-                  diff={caseVerified.physicalBalance ? (parseFloat(caseVerified.physicalBalance) - (dashboardData.cashInHand.balanceAmount || 0)).toFixed(0) : null}
-                  unit="₹"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <SummaryCard
-                  title="999 Fine (System)"
-                  systemValue={Math.trunc(dashboardData.cashInHand.balanceFine999 || 0).toLocaleString('en-IN')}
-                  physicalValue="-"
-                  diff={null}
-                  unit="g"
-                />
-              </Grid>
-              <Grid item xs={12} sm={6} md={4}>
-                <SummaryCard
-                  title="999 Fine (Physical)"
-                  systemValue="-"
-                  physicalValue={caseVerified.physicalFine999 ? Math.trunc(parseFloat(caseVerified.physicalFine999)).toLocaleString('en-IN') : ''}
-                  diff={caseVerified.physicalFine999 ? (parseFloat(caseVerified.physicalFine999) - (dashboardData.cashInHand.balanceFine999 || 0)).toFixed(0) : null}
-                  unit="g"
-                />
-              </Grid>
-            </Grid>
-
-            <Paper sx={{ p: 3, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                Enter Physical Count
-              </Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Physical Balance Amount (₹)"
-                    type="number"
-                    value={caseVerified.physicalBalance}
-                    onChange={(e) => setCaseVerified(prev => ({ ...prev, physicalBalance: e.target.value }))}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': { borderColor: '#818cf8' },
-                        '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
-                      },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Physical 999 Fine (g)"
-                    type="number"
-                    value={caseVerified.physicalFine999}
-                    onChange={(e) => setCaseVerified(prev => ({ ...prev, physicalFine999: e.target.value }))}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': { borderColor: '#818cf8' },
-                        '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
-                      },
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={12} md={4}>
-                  <TextField
-                    fullWidth
-                    label="Remark"
-                    value={caseVerified.remark}
-                    onChange={(e) => setCaseVerified(prev => ({ ...prev, remark: e.target.value }))}
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': { borderColor: '#818cf8' },
-                        '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
-                      },
-                    }}
-                  />
-                </Grid>
-              </Grid>
-
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<CheckIcon />}
-                  onClick={handleSaveVerification}
-                  sx={{
-                    background: gradients.primary,
-                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
-                    '&:hover': { background: gradients.primaryHover },
-                    px: 4,
-                    py: 1.5,
-                  }}
-                >
-                  {editId ? 'Update Case Verification' : 'Save Case Verification'}
-                </Button>
-              </Box>
-            </Paper>
-          </Box>
-        )}
-
-        {tabValue === 2 && (
-          <Box>
-            <TableContainer component={Paper} elevation={1}>
+            <TableContainer component={Paper} elevation={1} sx={{ border: '1px solid', borderColor: 'divider' }}>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ background: gradients.primary }}>
+                    <TableCell sx={{ color: '#fff', width: '50px' }} />
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Sr No</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Date</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Physical Balance (₹)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>999 Fine (g)</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Diff Balance</TableCell>
-                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Diff 999 Fine</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Verified Cash (₹)</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Verified Chorsa 999 (g)</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Verified Bank 9999 (g)</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Remark</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {verifications.map((v, index) => {
-                    const systemBalance = dashboardData.cashInHand.balanceAmount || 0;
-                    const systemFine999 = dashboardData.cashInHand.balanceFine999 || 0;
-                    const diffBalance = (v.physicalBalance || 0) - systemBalance;
-                    const diffFine999 = (v.physicalFine999 || 0) - systemFine999;
+                    const chorsaDiff = (v.chorsa999?.physicalWeight || 0) - (v.chorsa999?.systemWeight || 0);
+                    const bankDiff = (v.bank9999?.physicalWeight || 0) - (v.bank9999?.systemWeight || 0);
+                    const isExpanded = !!expandedRows[v._id];
+
                     return (
-                      <TableRow key={v._id} hover>
-                        <TableCell sx={{ fontWeight: 600 }}>{(page - 1) * limit + index + 1}</TableCell>
-                        <TableCell>{v.date ? new Date(v.date).toLocaleDateString('en-GB') : '-'}</TableCell>
-                        <TableCell>{Math.trunc(v.physicalBalance || 0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{(v.physicalFine999 || 0).toFixed(2)}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={`${diffBalance > 0 ? '+' : ''}${diffBalance.toFixed(0)}`}
-                            size="small"
-                            color={diffBalance === 0 ? 'success' : diffBalance > 0 ? 'info' : 'error'}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={`${diffFine999 > 0 ? '+' : ''}${diffFine999.toFixed(2)}`}
-                            size="small"
-                            color={diffFine999 === 0 ? 'success' : diffFine999 > 0 ? 'info' : 'error'}
-                          />
-                        </TableCell>
-                        <TableCell>{v.remark || '-'}</TableCell>
-                        <TableCell>
-                          <IconButton size="small" onClick={() => handleEdit(v)} sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}>
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton size="small" onClick={() => handleDeleteClick(v._id)} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
+                      <React.Fragment key={v._id}>
+                        <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
+                          <TableCell>
+                            <IconButton size="small" onClick={() => toggleRow(v._id)} sx={{ color: isExpanded ? '#6366f1' : 'text.secondary' }}>
+                              {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>{(page - 1) * limit + index + 1}</TableCell>
+                          <TableCell>{v.date ? new Date(v.date).toLocaleDateString('en-GB') : '-'}</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>
+                            ₹{Math.trunc(v.physicalBalance || 0).toLocaleString('en-IN')}
+                          </TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {(v.chorsa999?.physicalWeight || 0).toFixed(1)}g
+                              </Typography>
+                              {chorsaDiff !== 0 && (
+                                <Chip
+                                  label={`${chorsaDiff > 0 ? '+' : ''}${chorsaDiff.toFixed(1)}`}
+                                  size="small"
+                                  color={chorsaDiff > 0 ? 'info' : 'error'}
+                                  sx={{ height: 16, fontSize: '0.65rem', fontWeight: 600 }}
+                                />
+                              )}
+                            </Stack>
+                          </TableCell>
+                          <TableCell>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                {(v.bank9999?.physicalWeight || 0).toFixed(1)}g
+                              </Typography>
+                              {bankDiff !== 0 && (
+                                <Chip
+                                  label={`${bankDiff > 0 ? '+' : ''}${bankDiff.toFixed(1)}`}
+                                  size="small"
+                                  color={bankDiff > 0 ? 'info' : 'error'}
+                                  sx={{ height: 16, fontSize: '0.65rem', fontWeight: 600 }}
+                                />
+                              )}
+                            </Stack>
+                          </TableCell>
+                          <TableCell>{v.remark || '-'}</TableCell>
+                          <TableCell>
+                            <IconButton size="small" onClick={() => handleEdit(v)} sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={() => handleDeleteClick(v._id)} sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}>
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                        {isExpanded && (
+                          <TableRow sx={{ backgroundColor: 'action.hover' }}>
+                            <TableCell colSpan={8} sx={{ py: 2, px: { xs: 1, md: 4 } }}>
+                              <Box sx={{ p: 2, borderRadius: 2, bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: 1 }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1.5, color: '#6366f1' }}>
+                                  Verification Stock & Cash Breakdown
+                                </Typography>
+                                <TableContainer component={Paper} variant="outlined">
+                                  <Table size="small" sx={{ minWidth: { xs: 800, sm: '100%' } }}>
+                                    <TableHead>
+                                      <TableRow sx={{ backgroundColor: 'action.selected' }}>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Asset</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>System Buy / In</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>System Sell / Out</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Net Stock / Cash</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Physical Weight / Cash</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Diff</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary' }}>Remark</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {/* Cash Row */}
+                                      <TableRow>
+                                        <TableCell sx={{ fontWeight: 600 }}>Cash Balance</TableCell>
+                                        <TableCell>₹{Math.trunc(v.cash?.systemIn || 0).toLocaleString('en-IN')}</TableCell>
+                                        <TableCell>₹{Math.trunc(v.cash?.systemOut || 0).toLocaleString('en-IN')}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>₹{Math.trunc(v.cash?.systemNet || 0).toLocaleString('en-IN')}</TableCell>
+                                        <TableCell>₹{Math.trunc(v.cash?.physicalBalance || v.physicalBalance || 0).toLocaleString('en-IN')}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, color: ((v.cash?.physicalBalance || v.physicalBalance || 0) - (v.cash?.systemNet || 0)) >= 0 ? '#10b981' : '#ef4444' }}>
+                                          ₹{Math.trunc((v.cash?.physicalBalance || v.physicalBalance || 0) - (v.cash?.systemNet || 0)).toLocaleString('en-IN')}
+                                        </TableCell>
+                                        <TableCell>{v.cash?.remark || v.remark || '-'}</TableCell>
+                                      </TableRow>
+
+                                      {/* Chorsa Row */}
+                                      <TableRow>
+                                        <TableCell sx={{ fontWeight: 600 }}>Chorsa 999</TableCell>
+                                        <TableCell>{(v.chorsa999?.systemBuy || 0).toFixed(1)}g</TableCell>
+                                        <TableCell>{(v.chorsa999?.systemSell || 0).toFixed(1)}g</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>{(v.chorsa999?.systemWeight || 0).toFixed(1)}g</TableCell>
+                                        <TableCell>{(v.chorsa999?.physicalWeight || 0).toFixed(1)}g</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, color: chorsaDiff >= 0 ? '#6366f1' : '#ef4444' }}>
+                                          {chorsaDiff > 0 ? '+' : ''}{chorsaDiff.toFixed(1)}g
+                                        </TableCell>
+                                        <TableCell>{v.chorsa999?.remark || '-'}</TableCell>
+                                      </TableRow>
+
+                                      {/* Bank Row */}
+                                      <TableRow>
+                                        <TableCell sx={{ fontWeight: 600 }}>Bank 9999</TableCell>
+                                        <TableCell>{(v.bank9999?.systemBuy || 0).toFixed(1)}g</TableCell>
+                                        <TableCell>{(v.bank9999?.systemSell || 0).toFixed(1)}g</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>{(v.bank9999?.systemWeight || 0).toFixed(1)}g</TableCell>
+                                        <TableCell>{(v.bank9999?.physicalWeight || 0).toFixed(1)}g</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, color: bankDiff >= 0 ? '#ec4899' : '#ef4444' }}>
+                                          {bankDiff > 0 ? '+' : ''}{bankDiff.toFixed(1)}g
+                                        </TableCell>
+                                        <TableCell>{v.bank9999?.remark || '-'}</TableCell>
+                                      </TableRow>
+                                    </TableBody>
+                                  </Table>
+                                </TableContainer>
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </React.Fragment>
                     );
                   })}
                   {verifications.length === 0 && (

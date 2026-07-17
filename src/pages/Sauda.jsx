@@ -642,7 +642,7 @@ const Sauda = () => {
 
             {/* Filters */}
             <Grid container spacing={2} sx={{ mb: 2 }}>
-              <Grid item xs={12} md={4}>
+              <Grid item xs={12} sm={4}>
                 <Autocomplete
                   fullWidth
                   sx={{ minWidth: { md: '200px' } }}
@@ -669,7 +669,7 @@ const Sauda = () => {
                   )}
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={6} sm={3}>
                 <TextField
                   fullWidth
                   size="small"
@@ -680,7 +680,7 @@ const Sauda = () => {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} md={3}>
+              <Grid item xs={6} sm={3}>
                 <TextField
                   fullWidth
                   size="small"
@@ -694,7 +694,7 @@ const Sauda = () => {
                   InputLabelProps={{ shrink: true }}
                 />
               </Grid>
-              <Grid item xs={12} md={2}>
+              <Grid item xs={12} sm={2}>
                 <Button
                   fullWidth
                   variant="outlined"
@@ -914,7 +914,7 @@ const Sauda = () => {
                 options={partySearchQuery ? partySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
                 isOptionEqualToValue={(option, value) => option?._id === value?._id}
-                value={parties.find((p) => p._id === formData.partyId) || null}
+                value={formData.partyId ? { _id: formData.partyId, partyName: formData.partyName } : null}
                 onChange={(e, newValue) => {
                   if (newValue) {
                     setFormData({

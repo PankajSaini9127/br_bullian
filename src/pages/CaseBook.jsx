@@ -75,6 +75,7 @@ const CaseBook = () => {
   const totalIncoming = cashBook?.incoming?.total || 0;
   const totalOutgoing = cashBook?.outgoing?.total || 0;
   const balance = cashBook?.balance || 0;
+  const cashInHand = cashBook?.cashInHand || 0;
 
   const handlePrint = () => {
     if (!cashBook) return;
@@ -288,8 +289,8 @@ const CaseBook = () => {
                 <CaseInHandIcon sx={{ mr: 1, color: '#0891b2', fontSize: 20 }} />
                 <Typography variant="body2" color="text.secondary">Case in Hand</Typography>
               </Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: balance >= 0 ? '#0891b2' : '#ef4444' }}>
-                ₹{Math.trunc(balance).toLocaleString('en-IN')}
+              <Typography variant="h5" sx={{ fontWeight: 700, color: cashInHand >= 0 ? '#0891b2' : '#ef4444' }}>
+                ₹{Math.trunc(cashInHand).toLocaleString('en-IN')}
               </Typography>
             </CardContent>
           </Card>

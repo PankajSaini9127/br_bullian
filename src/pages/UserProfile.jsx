@@ -36,7 +36,7 @@ const UserProfile = () => {
   const [isEditingUser, setIsEditingUser] = useState(false);
   const [isEditingCompany, setIsEditingCompany] = useState(false);
   const [userForm, setUserForm] = useState({ username: '', email: '', mobileNumber: '' });
-  const [companyForm, setCompanyForm] = useState({ companyName: '', openingBalance: '', openingBalanceDate: '', openingFine: '', openingFineDate: '' });
+  const [companyForm, setCompanyForm] = useState({ companyName: '', openingBalance: '', openingBalanceDate: '', openingFine: '', openingFineDate: '', openingFine9999: '', openingFine9999Date: '' });
 
   useEffect(() => {
     fetchProfile();
@@ -61,6 +61,8 @@ const UserProfile = () => {
         openingBalanceDate: companyData?.openingBalanceDate ? companyData?.openingBalanceDate.split('T')[0] : '',
         openingFine: companyData?.openingFine?.toString() || '',
         openingFineDate: companyData?.openingFineDate ? companyData?.openingFineDate.split('T')[0] : '',
+        openingFine9999: companyData?.openingFine9999?.toString() || '',
+        openingFine9999Date: companyData?.openingFine9999Date ? companyData?.openingFine9999Date.split('T')[0] : '',
       });
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -86,6 +88,8 @@ const UserProfile = () => {
         openingBalanceDate: companyForm.openingBalanceDate || undefined,
         openingFine: parseFloat(companyForm.openingFine) || 0,
         openingFineDate: companyForm.openingFineDate || undefined,
+        openingFine9999: parseFloat(companyForm.openingFine9999) || 0,
+        openingFine9999Date: companyForm.openingFine9999Date || undefined,
       });
       const raw = response?.data?.data || response?.data || {};
       const userData = raw?.user || raw;
@@ -122,6 +126,8 @@ const UserProfile = () => {
         openingBalanceDate: companyForm.openingBalanceDate || undefined,
         openingFine: parseFloat(companyForm.openingFine) || 0,
         openingFineDate: companyForm.openingFineDate || undefined,
+        openingFine9999: parseFloat(companyForm.openingFine9999) || 0,
+        openingFine9999Date: companyForm.openingFine9999Date || undefined,
       });
       const raw = response?.data?.data || response?.data || {};
       const userData = raw?.user || raw;
@@ -133,6 +139,8 @@ const UserProfile = () => {
         openingBalanceDate: companyData?.openingBalanceDate ? companyData?.openingBalanceDate.split('T')[0] : '',
         openingFine: companyData?.openingFine?.toString() || '',
         openingFineDate: companyData?.openingFineDate ? companyData?.openingFineDate.split('T')[0] : '',
+        openingFine9999: companyData?.openingFine9999?.toString() || '',
+        openingFine9999Date: companyData?.openingFine9999Date ? companyData?.openingFine9999Date.split('T')[0] : '',
       });
       setIsEditingCompany(false);
       toast.success('Company profile updated successfully');
@@ -150,6 +158,8 @@ const UserProfile = () => {
       openingBalanceDate: c?.openingBalanceDate ? c?.openingBalanceDate.split('T')[0] : '',
       openingFine: c?.openingFine?.toString() || '',
       openingFineDate: c?.openingFineDate ? c?.openingFineDate.split('T')[0] : '',
+      openingFine9999: c?.openingFine9999?.toString() || '',
+      openingFine9999Date: c?.openingFine9999Date ? c?.openingFine9999Date.split('T')[0] : '',
     });
     setIsEditingCompany(false);
   };
@@ -269,8 +279,12 @@ const UserProfile = () => {
                 <TextField label="As on Date" type="date" value={companyForm.openingBalanceDate} onChange={(e) => setCompanyForm({ ...companyForm, openingBalanceDate: e.target.value })} size="small" fullWidth InputLabelProps={{ shrink: true }} />
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField label="Opening Fine (g)" type="number" value={companyForm.openingFine} onChange={(e) => setCompanyForm({ ...companyForm, openingFine: e.target.value })} size="small" fullWidth />
+                <TextField label="Opening Fine 999 (Chorsa) (g)" type="number" value={companyForm.openingFine} onChange={(e) => setCompanyForm({ ...companyForm, openingFine: e.target.value })} size="small" fullWidth />
                 <TextField label="As on Date" type="date" value={companyForm.openingFineDate} onChange={(e) => setCompanyForm({ ...companyForm, openingFineDate: e.target.value })} size="small" fullWidth InputLabelProps={{ shrink: true }} />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField label="Opening Fine 9999 (Bank) (g)" type="number" value={companyForm.openingFine9999} onChange={(e) => setCompanyForm({ ...companyForm, openingFine9999: e.target.value })} size="small" fullWidth />
+                <TextField label="As on Date" type="date" value={companyForm.openingFine9999Date} onChange={(e) => setCompanyForm({ ...companyForm, openingFine9999Date: e.target.value })} size="small" fullWidth InputLabelProps={{ shrink: true }} />
               </Stack>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
                 <Button variant="contained" startIcon={<AddIcon />} onClick={handleSaveCompany} sx={{ background: gradients.primary, fontWeight: 600 }}>Create Company</Button>
@@ -284,8 +298,12 @@ const UserProfile = () => {
                 <TextField label="As on Date" type="date" value={companyForm.openingBalanceDate} onChange={(e) => setCompanyForm({ ...companyForm, openingBalanceDate: e.target.value })} size="small" fullWidth InputLabelProps={{ shrink: true }} />
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                <TextField label="Opening Fine (g)" type="number" value={companyForm.openingFine} onChange={(e) => setCompanyForm({ ...companyForm, openingFine: e.target.value })} size="small" fullWidth />
+                <TextField label="Opening Fine 999 (Chorsa) (g)" type="number" value={companyForm.openingFine} onChange={(e) => setCompanyForm({ ...companyForm, openingFine: e.target.value })} size="small" fullWidth />
                 <TextField label="As on Date" type="date" value={companyForm.openingFineDate} onChange={(e) => setCompanyForm({ ...companyForm, openingFineDate: e.target.value })} size="small" fullWidth InputLabelProps={{ shrink: true }} />
+              </Stack>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField label="Opening Fine 9999 (Bank) (g)" type="number" value={companyForm.openingFine9999} onChange={(e) => setCompanyForm({ ...companyForm, openingFine9999: e.target.value })} size="small" fullWidth />
+                <TextField label="As on Date" type="date" value={companyForm.openingFine9999Date} onChange={(e) => setCompanyForm({ ...companyForm, openingFine9999Date: e.target.value })} size="small" fullWidth InputLabelProps={{ shrink: true }} />
               </Stack>
               <Stack direction="row" spacing={1} justifyContent="flex-end">
                 <Button startIcon={<CancelIcon />} onClick={handleCancelCompany} sx={{ color: '#6366f1' }}>Cancel</Button>
@@ -308,10 +326,18 @@ const UserProfile = () => {
               </Box>
               <Divider />
               <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Opening Fine</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Opening Fine 999 (Chorsa)</Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>{Math.trunc(company?.openingFine || 0).toLocaleString('en-IN')}g</Typography>
                 {company?.openingFineDate && (
                   <Typography variant="body2" color="text.secondary">As on {new Date(company.openingFineDate).toLocaleDateString('en-GB')}</Typography>
+                )}
+              </Box>
+              <Divider />
+              <Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Opening Fine 9999 (Bank)</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>{Math.trunc(company?.openingFine9999 || 0).toLocaleString('en-IN')}g</Typography>
+                {company?.openingFine9999Date && (
+                  <Typography variant="body2" color="text.secondary">As on {new Date(company.openingFine9999Date).toLocaleDateString('en-GB')}</Typography>
                 )}
               </Box>
               <Divider />

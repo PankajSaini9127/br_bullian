@@ -30,6 +30,7 @@ const CompanyProfile = () => {
     companyName: '',
     openingBalance: '',
     openingFine: '',
+    openingFine9999: '',
     isActive: true,
   });
 
@@ -50,6 +51,7 @@ const CompanyProfile = () => {
           companyName: c.companyName || '',
           openingBalance: c.openingBalance?.toString() || '',
           openingFine: c.openingFine?.toString() || '',
+          openingFine9999: c.openingFine9999?.toString() || '',
           isActive: c.isActive !== false,
         });
       }
@@ -69,6 +71,7 @@ const CompanyProfile = () => {
         companyName: formData.companyName,
         openingBalance: parseFloat(formData.openingBalance) || 0,
         openingFine: parseFloat(formData.openingFine) || 0,
+        openingFine9999: parseFloat(formData.openingFine9999) || 0,
         isActive: formData.isActive,
       };
       await companyService.updateCompany(company._id, payload);
@@ -88,6 +91,7 @@ const CompanyProfile = () => {
         companyName: c.companyName || '',
         openingBalance: c.openingBalance?.toString() || '',
         openingFine: c.openingFine?.toString() || '',
+        openingFine9999: c.openingFine9999?.toString() || '',
         isActive: c.isActive !== false,
       });
     }
@@ -143,10 +147,18 @@ const CompanyProfile = () => {
                   fullWidth
                 />
                 <TextField
-                  label="Opening Fine (g)"
+                  label="Opening Fine 999 (Chorsa) (g)"
                   type="number"
                   value={formData.openingFine}
                   onChange={(e) => setFormData({ ...formData, openingFine: e.target.value })}
+                  size="small"
+                  fullWidth
+                />
+                <TextField
+                  label="Opening Fine 9999 (Bank) (g)"
+                  type="number"
+                  value={formData.openingFine9999}
+                  onChange={(e) => setFormData({ ...formData, openingFine9999: e.target.value })}
                   size="small"
                   fullWidth
                 />
@@ -183,9 +195,16 @@ const CompanyProfile = () => {
               </Box>
               <Divider />
               <Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Opening Fine</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Opening Fine 999 (Chorsa)</Typography>
                 <Typography variant="body1" sx={{ fontWeight: 600 }}>
                   {Math.trunc(company.openingFine || 0).toLocaleString('en-IN')}g
+                </Typography>
+              </Box>
+              <Divider />
+              <Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Opening Fine 9999 (Bank)</Typography>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  {Math.trunc(company.openingFine9999 || 0).toLocaleString('en-IN')}g
                 </Typography>
               </Box>
               <Divider />

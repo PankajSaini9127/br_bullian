@@ -1,4 +1,4 @@
-async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateString("en-GB"):"-",x=t=>{var D,P;return t.type==="payment"?t.paymentType==="incoming"?Math.trunc(t.amount||0):0:t.type==="Purchase"?t.amount?Math.trunc(t.amount):((D=t.saudaCuts)==null?void 0:D.reduce((w,p)=>w+Math.trunc(p.cutFine*p.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="debit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?((P=t.saudaCuts)==null?void 0:P.reduce((w,p)=>w+Math.trunc(p.cutFine*p.rate/1e3),0))||0:t.type==="debit-note"?Math.trunc(t.amount||0):0},r=t=>{var D,P;return t.type==="payment"?t.paymentType==="outgoing"?Math.trunc(t.amount||0):0:t.type==="sales"?((D=t.saudaCuts)==null?void 0:D.reduce((w,p)=>w+Math.trunc(p.cutFine*p.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="credit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?0:t.type==="Purchase Return"?t.amount?Math.trunc(t.amount):((P=t.saudaCuts)==null?void 0:P.reduce((w,p)=>w+Math.trunc(p.cutFine*p.rate/1e3),0))||0:t.type==="credit-note"?Math.trunc(t.amount||0):0};let c=0,f=0;const s=Math.trunc((v==null?void 0:v.openingBalance)||0),i=s>0?s:0,h=s<0?Math.abs(s):0;let m=i-h;d+=`
+async function U(e,a,P,N,C,$){let d="";const y=t=>t?new Date(t).toLocaleDateString("en-GB"):"-",f=t=>{var F,z;return t.type==="payment"?t.paymentType==="incoming"?Math.trunc(t.amount||0):0:t.type==="Purchase"?t.amount?Math.trunc(t.amount):((F=t.saudaCuts)==null?void 0:F.reduce((v,c)=>v+Math.trunc(c.cutFine*c.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="debit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?((z=t.saudaCuts)==null?void 0:z.reduce((v,c)=>v+Math.trunc(c.cutFine*c.rate/1e3),0))||0:t.type==="debit-note"?Math.trunc(t.amount||0):0},s=t=>{var F,z;return t.type==="payment"?t.paymentType==="outgoing"?Math.trunc(t.amount||0):0:t.type==="sales"?((F=t.saudaCuts)==null?void 0:F.reduce((v,c)=>v+Math.trunc(c.cutFine*c.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="credit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?0:t.type==="Purchase Return"?t.amount?Math.trunc(t.amount):((z=t.saudaCuts)==null?void 0:z.reduce((v,c)=>v+Math.trunc(c.cutFine*c.rate/1e3),0))||0:t.type==="credit-note"?Math.trunc(t.amount||0):0};console.log(P);let g=0,u=0;const h=Math.trunc((e==null?void 0:e.openingBalance)||0),r=h>0?h:0,l=h<0?Math.abs(h):0;let m=r-l;d+=`
     <html>
     <head>
       <title>Party Ledger</title>
@@ -6,7 +6,7 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
         @page {
           size: A4;
           margin: 14mm 5mm 12mm 5mm;
-          @top-center { content: "${o.partyName||"-"}"; font-size: 9px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+          @top-center { content: "${e.partyName||"-"}"; font-size: 9px; border-bottom: 1px solid #333; padding-bottom: 2px; }
           @bottom-center { content: "Page " counter(page); font-size: 8px; }
         }
         body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 9px; padding: 0; line-height: 1.2; }
@@ -31,8 +31,8 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
     </head>
     <body>
       <div class="ledger-header">
-        <h2>${o.partyName||"-"}</h2>
-        <div class="sub">${C&&y?u(C)+" to "+u(y):"Ledger Statement"}</div>
+        <h2>${e.partyName||"-"}</h2>
+        <div class="sub">${C&&$?y(C)+" to "+y($):"Ledger Statement"}</div>
       </div>
 
       <table class="ledger-table">
@@ -53,59 +53,59 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
             <td>-</td>
             <td>Opening Balance</td>
             <td class="num">-</td>
-            <td class="num">${i||""}</td>
-            <td class="num">${h||""}</td>
+            <td class="num">${r||""}</td>
+            <td class="num">${l||""}</td>
             <td class="num bold">${m}</td>
           </tr>
-  `;const $=t=>t.type==="payment"?t.paymentType==="incoming"?"Payment":"Payment Outgoing":t.type==="Purchase"?"Purchase":t.type==="Purchase Return"?"Purchase Return":t.type==="sales"?"Sales Invoice":t.type==="sales-return"?"Sales Return":t.type==="crosscut"?"Cross Cut":t.type==="credit-note"?"Credit Note":t.type==="debit-note"?"Debit Note":"-";let b=null,e=null;a.forEach(t=>{var R,L,W;const D=u(t.date),P=x(t),w=r(t);c+=P,f+=w,m=Math.trunc(i+c-(h+f));let p=t.type;if(b!==null&&b!==p&&(d+=`
+  `;const w=t=>t.type==="payment"?t.paymentType==="incoming"?"Payment":"Payment Outgoing":t.type==="Purchase"?"Purchase":t.type==="Purchase Return"?"Purchase Return":t.type==="sales"?"Sales Invoice":t.type==="sales-return"?"Sales Return":t.type==="crosscut"?"Cross Cut":t.type==="credit-note"?"Credit Note":t.type==="debit-note"?"Debit Note":"-";let b=null,x=null;a.forEach(t=>{var R,L,W;const F=y(t.date),z=f(t),v=s(t);g+=z,u+=v,m=Math.trunc(r+g-(l+u));let c=t.type;if(b!==null&&b!==c&&(d+=`
           <tr>
             <td colspan="7" style="height: 8px; border-top: 2px solid #000; border-left: none; border-right: none; border-bottom: none;"></td>
           </tr>
-      `),b==="Purchase"&&p==="Purchase"){const g=t.invoiceNo;e!==null&&e!==g&&(d+=`
+      `),b==="Purchase"&&c==="Purchase"){const p=t.invoiceNo;x!==null&&x!==p&&(d+=`
           <tr>
             <td colspan="7" style="height: 8px; border-top: 2px solid #000; border-left: none; border-right: none; border-bottom: none;"></td>
           </tr>
-        `)}b=p,e=t.invoiceNo;let S="",z="-";if(t.type==="payment"?(S=(t.paymentType==="incoming"?"Payment In":"Payment Out")+(t.paymentNo?" - "+t.paymentNo:"")+(t.remark?" ("+t.remark+")":""),z="-"):t.type==="Purchase"?(S="Purchase"+(t.invoiceNo?" - "+t.invoiceNo:""),z=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="Purchase Return"?(S="Purchase Return"+(t.invoiceNo?" - "+t.invoiceNo:""),z=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales"?(S="Sales"+(t.invoiceNo?" - "+t.invoiceNo:""),z=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales-return"?(S="Sales Return"+(t.invoiceNo?" - "+t.invoiceNo:""),z=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="crosscut"?(S="Cross Cut: "+(t.targetSaudaNo||"-")+" ("+(t.targetSaudaType||"-")+")",z=((R=t.details)==null?void 0:R.reduce((g,n)=>g+(n.crosscutQuantity||0),0))+" g"):t.type==="credit-note"?(S="Credit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),z=t.fine?t.fine+" g":"-"):t.type==="debit-note"&&(S="Debit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),z=t.fine?t.fine+" g":"-"),d+=`
+        `)}b=c,x=t.invoiceNo;let D="",S="-";if(t.type==="payment"?(D=(t.paymentType==="incoming"?"Payment In":"Payment Out")+(t.paymentNo?" - "+t.paymentNo:"")+(t.remark?" ("+t.remark+")":""),S="-"):t.type==="Purchase"?(D="Purchase"+(t.invoiceNo?" - "+t.invoiceNo:""),S=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="Purchase Return"?(D="Purchase Return"+(t.invoiceNo?" - "+t.invoiceNo:""),S=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales"?(D="Sales"+(t.invoiceNo?" - "+t.invoiceNo:""),S=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales-return"?(D="Sales Return"+(t.invoiceNo?" - "+t.invoiceNo:""),S=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="crosscut"?(D="Cross Cut: "+(t.targetSaudaNo||"-")+" ("+(t.targetSaudaType||"-")+")",S=((R=t.details)==null?void 0:R.reduce((p,n)=>p+(n.crosscutQuantity||0),0))+" g"):t.type==="credit-note"?(D="Credit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),S=t.fine?t.fine+" g":"-"):t.type==="debit-note"&&(D="Debit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),S=t.fine?t.fine+" g":"-"),d+=`
           <tr>
-            <td class="center">${D}</td>
-            <td>${$(t)}</td>
-            <td>${S}</td>
-            <td class="num">${z}</td>
-            <td class="num">${P||""}</td>
-            <td class="num">${w||""}</td>
+            <td class="center">${F}</td>
+            <td>${w(t)}</td>
+            <td>${D}</td>
+            <td class="num">${S}</td>
+            <td class="num">${z||""}</td>
+            <td class="num">${v||""}</td>
             <td class="num bold">${m}</td>
           </tr>
-    `,t.type==="crosscut"&&((L=t.details)==null?void 0:L.length)>0&&t.details.forEach(g=>{var n,T,M;d+=`
+    `,t.type==="crosscut"&&((L=t.details)==null?void 0:L.length)>0&&t.details.forEach(p=>{var n,T,I;d+=`
           <tr>
             <td colspan="7" style="padding: 2px 8px; background: #f9f9f9; font-size: 8px;">
-              <strong>Source:</strong> ${g.sourceSaudaNo||"-"} (${g.sourceSaudaType||"-"}) | 
-              <strong>Qty:</strong> ${g.crosscutQuantity||"-"}g | 
-              <strong>Source Rate:</strong> ₹${((n=g.sourceRate)==null?void 0:n.toLocaleString("en-IN"))||"-"} | 
-              <strong>Target Rate:</strong> ₹${((T=g.targetRate)==null?void 0:T.toLocaleString("en-IN"))||"-"} | 
-              <strong>P/L:</strong> ₹${((M=g.profitLoss)==null?void 0:M.toLocaleString("en-IN"))||"-"}
+              <strong>Source:</strong> ${p.sourceSaudaNo||"-"} (${p.sourceSaudaType||"-"}) | 
+              <strong>Qty:</strong> ${p.crosscutQuantity||"-"}g | 
+              <strong>Source Rate:</strong> ₹${((n=p.sourceRate)==null?void 0:n.toLocaleString("en-IN"))||"-"} | 
+              <strong>Target Rate:</strong> ₹${((T=p.targetRate)==null?void 0:T.toLocaleString("en-IN"))||"-"} | 
+              <strong>P/L:</strong> ₹${((I=p.profitLoss)==null?void 0:I.toLocaleString("en-IN"))||"-"}
             </td>
           </tr>
-        `}),(t.type==="Purchase"||t.type==="Purchase Return"||t.type==="sales"||t.type==="sales-return")&&((W=t.saudaCuts)==null?void 0:W.length)>0){const g=t.saudaCuts.some(n=>n.isCrossCut);t.saudaCuts.forEach(n=>{var E,A,G,Q,O;const T=n.cutFine&&n.rate?(n.cutFine*n.rate/1e3).toFixed(0):"-",M=n.isCrossCut&&n.crosscutQuantity&&n.rate?(n.crosscutQuantity*n.rate/1e3).toFixed(0):"-",B=n.saudaDate?new Date(n.saudaDate).toLocaleDateString("en-GB"):"-";d+=`
+        `}),(t.type==="Purchase"||t.type==="Purchase Return"||t.type==="sales"||t.type==="sales-return")&&((W=t.saudaCuts)==null?void 0:W.length)>0){const p=t.saudaCuts.some(n=>n.isCrossCut);t.saudaCuts.forEach(n=>{var E,A,G,Q,O;const T=n.cutFine&&n.rate?(n.cutFine*n.rate/1e3).toFixed(0):"-",I=n.isCrossCut&&n.crosscutQuantity&&n.rate?(n.crosscutQuantity*n.rate/1e3).toFixed(0):"-",H=n.saudaDate?new Date(n.saudaDate).toLocaleDateString("en-GB"):"-";d+=`
           <tr>
             <td colspan="7" style="padding: 2px 8px; background: #fafafa; font-size: 8px;">
              <strong> Sauda No:</strong> ${n.saudaNo||"-"} | 
-            <strong>Date:</strong> ${B} | 
+            <strong>Date:</strong> ${H} | 
             <strong>Booking:</strong> ${((E=n.quantity)==null?void 0:E.toFixed(2))||"-"}g | 
             <strong>Rate:</strong> ₹${((A=n.rate)==null?void 0:A.toFixed(2))||"-"} | 
             <strong>Cut Fine:</strong> ${((G=n.cutFine)==null?void 0:G.toFixed(2))||"-"}g | 
             <strong>Amount:</strong> ₹${T}
-            ${g?` | <strong>Cross Qty:</strong> ${n.isCrossCut&&n.crosscutQuantity||"-"}g`:""}
-            ${g?` | <strong>Source Rate:</strong> ${n.isCrossCut?"₹"+(((Q=n.sourceRate)==null?void 0:Q.toLocaleString("en-IN"))||"-"):"-"}`:""}
-            ${g?` | <strong>Target Rate:</strong> ${n.isCrossCut?"₹"+(((O=n.targetRate)==null?void 0:O.toLocaleString("en-IN"))||"-"):"-"}`:""}
-            ${g?` | <strong>Cross Amount:</strong> ₹${M}`:""}
+            ${p?` | <strong>Cross Qty:</strong> ${n.isCrossCut&&n.crosscutQuantity||"-"}g`:""}
+            ${p?` | <strong>Source Rate:</strong> ${n.isCrossCut?"₹"+(((Q=n.sourceRate)==null?void 0:Q.toLocaleString("en-IN"))||"-"):"-"}`:""}
+            ${p?` | <strong>Target Rate:</strong> ${n.isCrossCut?"₹"+(((O=n.targetRate)==null?void 0:O.toLocaleString("en-IN"))||"-"):"-"}`:""}
+            ${p?` | <strong>Cross Amount:</strong> ₹${I}`:""}
           </td>
         </tr>
-      `})}});const l=Math.trunc(i+c-(h+f));d+=`
+      `})}});const o=Math.trunc(r+g-(l+u));d+=`
           <tr class="totals-row">
             <td colspan="4" class="center">Closing Balance</td>
-            <td class="num">${i+c}</td>
-            <td class="num">${h+f}</td>
-            <td class="num">${l!==0?l>0?l+" (dena hai)":l+" (lena hai)":l}</td>
+            <td class="num">${r+g}</td>
+            <td class="num">${l+u}</td>
+            <td class="num">${o!==0?o>0?o+" (dena hai)":o+" (lena hai)":o}</td>
           </tr>
         </tbody>
       </table>
@@ -124,13 +124,13 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
             </tr>
           </thead>
           <tbody>
-    `,N.forEach(t=>{const D=((parseFloat(t.quantity)||0)-(parseFloat(t.delivered)||0)).toFixed(1);d+=`
+    `,N.forEach(t=>{const F=((parseFloat(t.quantity)||0)-(parseFloat(t.delivered)||0)).toFixed(1);d+=`
             <tr>
               <td>${t.saudaNo||"-"}</td>
               <td>${t.saudaType||"-"}</td>
               <td class="num">${t.quantity||"-"}</td>
               <td class="num">${t.delivered||"-"}</td>
-              <td class="num">${D||"-"}</td>
+              <td class="num">${F||"-"}</td>
               <td class="num">${t.rate||"-"}</td>
             </tr>
       `}),d+=`
@@ -143,17 +143,17 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
       </div>
     </body>
     </html>
-  `;const F=document.createElement("iframe");F.style.position="absolute",F.style.top="-9999px",F.style.left="-9999px",document.body.appendChild(F);const I=F.contentDocument||F.contentWindow.document;return I.open(),I.write(d),I.close(),F.contentWindow.focus(),F.contentWindow.print(),setTimeout(()=>{document.body.removeChild(F)},1e3),!0}function q(o){var h,m,$,b;const a=e=>e?new Date(e).toLocaleDateString("en-GB"):"-",v=((h=o==null?void 0:o.incoming)==null?void 0:h.payments)||[],N=((m=o==null?void 0:o.outgoing)==null?void 0:m.payments)||[],C=(($=o==null?void 0:o.incoming)==null?void 0:$.total)||0,y=((b=o==null?void 0:o.outgoing)==null?void 0:b.total)||0,d=(o==null?void 0:o.balance)||0,u=[];v.forEach(e=>{var l;u.push({date:e.paymentDate,particular:((l=e.partyId)==null?void 0:l.partyName)||"-",voucherType:"Receipt",voucherNo:e.paymentNo||"-",remark:e.remark||"",debit:e.amount||0,credit:0})}),N.forEach(e=>{var l;u.push({date:e.paymentDate,particular:((l=e.partyId)==null?void 0:l.partyName)||"-",voucherType:"Payment",voucherNo:e.paymentNo||"-",remark:e.remark||"",debit:0,credit:e.amount||0})}),u.sort((e,l)=>new Date(e.date)-new Date(l.date));let x=0;const r=u.map(e=>(x=x+e.debit-e.credit,{...e,balance:x}));let c="";r.forEach(e=>{c+=`
+  `;const i=document.createElement("iframe");i.style.position="absolute",i.style.top="-9999px",i.style.left="-9999px",document.body.appendChild(i);const M=i.contentDocument||i.contentWindow.document;return M.open(),M.write(d),M.close(),i.contentWindow.focus(),i.contentWindow.print(),setTimeout(()=>{document.body.removeChild(i)},1e3),!0}function q(e){var m,w,b,x;const a=o=>o?new Date(o).toLocaleDateString("en-GB"):"-",P=((m=e==null?void 0:e.incoming)==null?void 0:m.payments)||[],N=((w=e==null?void 0:e.outgoing)==null?void 0:w.payments)||[],C=((b=e==null?void 0:e.incoming)==null?void 0:b.total)||0,$=((x=e==null?void 0:e.outgoing)==null?void 0:x.total)||0,d=(e==null?void 0:e.balance)||0,y=(e==null?void 0:e.cashInHand)||0,f=[];P.forEach(o=>{var i;f.push({date:o.paymentDate,particular:((i=o.partyId)==null?void 0:i.partyName)||"-",voucherType:"Receipt",voucherNo:o.paymentNo||"-",remark:o.remark||"",debit:o.amount||0,credit:0})}),N.forEach(o=>{var i;f.push({date:o.paymentDate,particular:((i=o.partyId)==null?void 0:i.partyName)||"-",voucherType:"Payment",voucherNo:o.paymentNo||"-",remark:o.remark||"",debit:0,credit:o.amount||0})}),f.sort((o,i)=>new Date(o.date)-new Date(i.date));let s=0;const g=f.map(o=>(s=s+o.debit-o.credit,{...o,balance:s}));let u="";g.forEach(o=>{u+=`
       <tr>
-        <td class="center">${a(e.date)}</td>
-        <td>${e.particular}${e.remark?" ("+e.remark+")":""}</td>
-        <td class="center">${e.voucherType}</td>
-        <td class="center">${e.voucherNo}</td>
-        <td class="num">${e.debit>0?Math.trunc(e.debit):""}</td>
-        <td class="num">${e.credit>0?Math.trunc(e.credit):""}</td>
-        <td class="num bold">${Math.trunc(e.balance)}</td>
+        <td class="center">${a(o.date)}</td>
+        <td>${o.particular}${o.remark?" ("+o.remark+")":""}</td>
+        <td class="center">${o.voucherType}</td>
+        <td class="center">${o.voucherNo}</td>
+        <td class="num">${o.debit>0?Math.trunc(o.debit):""}</td>
+        <td class="num">${o.credit>0?Math.trunc(o.credit):""}</td>
+        <td class="num bold">${Math.trunc(o.balance)}</td>
       </tr>
-    `});const f=`
+    `});const h=`
     <html>
     <head>
       <title>Cash Book</title>
@@ -202,11 +202,11 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
           </tr>
         </thead>
         <tbody>
-          ${c}
+          ${u}
           <tr class="totals-row">
             <td colspan="4" class="center">Total</td>
             <td class="num">${Math.trunc(C)}</td>
-            <td class="num">${Math.trunc(y)}</td>
+            <td class="num">${Math.trunc($)}</td>
             <td class="num">${Math.trunc(d)}</td>
           </tr>
         </tbody>
@@ -220,11 +220,15 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
           </tr>
           <tr>
             <td><strong>Total Outgoing:</strong></td>
-            <td class="num">&#8377;${Math.trunc(y)}</td>
+            <td class="num">&#8377;${Math.trunc($)}</td>
           </tr>
           <tr>
             <td><strong>Closing Balance:</strong></td>
             <td class="num">&#8377;${Math.trunc(d)}</td>
+          </tr>
+          <tr>
+            <td><strong>Cash In Hand:</strong></td>
+            <td class="num">&#8377;${Math.trunc(y)}</td>
           </tr>
         </table>
       </div>
@@ -234,7 +238,7 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
       </div>
     </body>
     </html>
-  `,s=document.createElement("iframe");s.style.position="absolute",s.style.top="-9999px",s.style.left="-9999px",document.body.appendChild(s);const i=s.contentDocument||s.contentWindow.document;return i.open(),i.write(f),i.close(),s.contentWindow.focus(),s.contentWindow.print(),setTimeout(()=>{document.body.removeChild(s)},1e3),!0}async function V(o){var f;let a="";console.log(o);const v=((f=o.partyId)==null?void 0:f.partyName)||o.partyName||"-",N=o.invoiceDate?new Date(o.invoiceDate).toLocaleDateString("en-GB"):"-",C=o.salesInvoiceNo||"SINV-"+String(o._id||o.id).padStart(4,"0"),y=o.isReturn||!1;console.log(y),a+=`
+  `,r=document.createElement("iframe");r.style.position="absolute",r.style.top="-9999px",r.style.left="-9999px",document.body.appendChild(r);const l=r.contentDocument||r.contentWindow.document;return l.open(),l.write(h),l.close(),r.contentWindow.focus(),r.contentWindow.print(),setTimeout(()=>{document.body.removeChild(r)},1e3),!0}async function V(e){var u;let a="";console.log(e);const P=((u=e.partyId)==null?void 0:u.partyName)||e.partyName||"-",N=e.invoiceDate?new Date(e.invoiceDate).toLocaleDateString("en-GB"):"-",C=e.salesInvoiceNo||"SINV-"+String(e._id||e.id).padStart(4,"0"),$=e.isReturn||!1;console.log($),a+=`
     <html>
     <head>
       <title>Sales Invoice</title>
@@ -282,9 +286,9 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
       </style>
     </head>
     <body>
-      <h1>${y?"SALES RETURN":"Sales Invoice"}</h1>
+      <h1>${$?"SALES RETURN":"Sales Invoice"}</h1>
       <div class="header">
-        <p>Name: ${v}</p>
+        <p>Name: ${P}</p>
         <p>Date: ${N}</p>
         <p>Invoice No: ${C}</p>
       </div>
@@ -300,26 +304,26 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
         </tr>
       </thead>
       <tbody>
-  `;const d=o.paggaIds||[];let u=0,x=0;d.forEach((s,i)=>{const h=parseFloat(s.weight)||0,m=parseFloat(s.touch)||0,$=h*m/100,b=$%1,e=Math.floor($)+(b<.45?0:b<.9?.5:1);u+=h,x+=e,a+=`
+  `;const d=e.paggaIds||[];let y=0,f=0;d.forEach((h,r)=>{const l=parseFloat(h.weight)||0,m=parseFloat(h.touch)||0,w=l*m/100,b=w%1,x=Math.floor(w)+(b<.45?0:b<.9?.5:1);y+=l,f+=x,a+=`
       <tr>
-        <td>${i+1}</td>
-        <td>${s.paggaNo||"-"}</td>
-        <td>${h.toFixed(2)}</td>
+        <td>${r+1}</td>
+        <td>${h.paggaNo||"-"}</td>
+        <td>${l.toFixed(2)}</td>
         <td>${m.toFixed(2)}</td>
-        <td>${e.toFixed(2)}</td>
+        <td>${x.toFixed(2)}</td>
       </tr>
     `}),a+=`
       </tbody>
     </table>
   `,a+='<hr style="border: 1px solid #ddd; margin: 5px 0;">',a+=`
     <div class="total-section">
-      <p style="font-weight: 500; font-size: 12px;">Gross Wt: ${u.toFixed(2)}g</p>
-      <p>Total Fine: ${x.toFixed(2)}g</p>
+      <p style="font-weight: 500; font-size: 12px;">Gross Wt: ${y.toFixed(2)}g</p>
+      <p>Total Fine: ${f.toFixed(2)}g</p>
     </div>
   `,a+='<hr style="border: 1px solid #ddd; margin: 10px 0;">',a+='<div class="footer">Thank you for your business!</div>',a+=`
     </body>
     </html>
-  `;const r=document.createElement("iframe");r.style.position="absolute",r.style.top="-9999px",r.style.left="-9999px",document.body.appendChild(r);const c=r.contentDocument||r.contentWindow.document;return c.open(),c.write(a),c.close(),r.contentWindow.focus(),r.contentWindow.print(),setTimeout(()=>{document.body.removeChild(r)},1e3),!0}async function H(o){var f,s;let a="";const v=((f=o.partyId)==null?void 0:f.partyName)||o.partyName||"-",N=o.invoiceDate?new Date(o.invoiceDate).toLocaleDateString("en-GB"):"-",C=o.invoiceNo||"INV-"+String(o.id).padStart(4,"0"),y=o.isReturn||!1;a+=`
+  `;const s=document.createElement("iframe");s.style.position="absolute",s.style.top="-9999px",s.style.left="-9999px",document.body.appendChild(s);const g=s.contentDocument||s.contentWindow.document;return g.open(),g.write(a),g.close(),s.contentWindow.focus(),s.contentWindow.print(),setTimeout(()=>{document.body.removeChild(s)},1e3),!0}async function _(e){var u,h;let a="";const P=((u=e.partyId)==null?void 0:u.partyName)||e.partyName||"-",N=e.invoiceDate?new Date(e.invoiceDate).toLocaleDateString("en-GB"):"-",C=e.invoiceNo||"INV-"+String(e.id).padStart(4,"0"),$=e.isReturn||!1;a+=`
     <html>
     <head>
       <title>Invoice</title>
@@ -367,9 +371,9 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
       </style>
     </head>
     <body>
-      <h1>BR BULLION - ${y?"Purchase Return":"Purchase Invoice"}</h1>
+      <h1>BR BULLION - ${$?"Purchase Return":"Purchase Invoice"}</h1>
       <div class="header">
-        <p>Name: ${v}</p>
+        <p>Name: ${P}</p>
         <p>Date: ${N}</p>
         <p>Invoice No: ${C}</p>
       </div>
@@ -385,23 +389,23 @@ async function U(o,a,v,N,C,y){let d="";const u=t=>t?new Date(t).toLocaleDateStri
         </tr>
       </thead>
       <tbody>
-  `;const d=((s=o.items)==null?void 0:s.filter(i=>i.paggaNo||i.weight||i.touch||i.fine))||[];let u=0,x=0;d.forEach((i,h)=>{const m=parseFloat(i.weight)||0,$=parseFloat(i.touch)||0,b=m*$/100,e=b%1,l=Math.floor(b)+(e<.45?0:e<.9?.5:1);u+=m,x+=l,a+=`
+  `;const d=((h=e.items)==null?void 0:h.filter(r=>r.paggaNo||r.weight||r.touch||r.fine))||[];let y=0,f=0;d.forEach((r,l)=>{const m=parseFloat(r.weight)||0,w=parseFloat(r.touch)||0,b=m*w/100,x=b%1,o=Math.floor(b)+(x<.45?0:x<.9?.5:1);y+=m,f+=o,a+=`
       <tr>
-        <td>${h+1}</td>
-        <td>${i.paggaNo||"-"}</td>
+        <td>${l+1}</td>
+        <td>${r.paggaNo||"-"}</td>
         <td>${m.toFixed(2)}</td>
-        <td>${$.toFixed(2)}</td>
-        <td>${l.toFixed(2)}</td>
+        <td>${w.toFixed(2)}</td>
+        <td>${o.toFixed(2)}</td>
       </tr>
     `}),a+=`
       </tbody>
     </table>
   `,a+='<hr style="border: 1px solid #ddd; margin: 5px 0;">',a+=`
     <div class="total-section">
-      <p style="font-weight: 500; font-size: 12px;">Gross Wt: ${u.toFixed(2)}g</p>
-      <p>Total Fine: ${x.toFixed(2)}g</p>
+      <p style="font-weight: 500; font-size: 12px;">Gross Wt: ${y.toFixed(2)}g</p>
+      <p>Total Fine: ${f.toFixed(2)}g</p>
     </div>
   `,a+='<hr style="border: 1px solid #ddd; margin: 10px 0;">',a+='<div class="footer">Thank you for your business!</div>',a+=`
     </body>
     </html>
-  `;const r=document.createElement("iframe");r.style.position="absolute",r.style.top="-9999px",r.style.left="-9999px",document.body.appendChild(r);const c=r.contentDocument||r.contentWindow.document;return c.open(),c.write(a),c.close(),r.contentWindow.focus(),r.contentWindow.print(),setTimeout(()=>{document.body.removeChild(r)},1e3),!0}export{V as a,U as b,q as c,H as p};
+  `;const s=document.createElement("iframe");s.style.position="absolute",s.style.top="-9999px",s.style.left="-9999px",document.body.appendChild(s);const g=s.contentDocument||s.contentWindow.document;return g.open(),g.write(a),g.close(),s.contentWindow.focus(),s.contentWindow.print(),setTimeout(()=>{document.body.removeChild(s)},1e3),!0}export{V as a,U as b,q as c,_ as p};

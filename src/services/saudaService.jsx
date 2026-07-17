@@ -84,6 +84,31 @@ async function getPartyPendingSaudas(partyId, saudaType, filters = {}) {
   }
 }
 
+async function getPartyPendingPakkiSaudas(partyId, saudaType, saudaCategory) {
+  try {
+    const params = {};
+    if (saudaType) params.saudaType = saudaType;
+    if (saudaCategory) params.saudaCategory = saudaCategory;
+    const response = await apiInstance.get(`/sauda/party/${partyId}/pending-pakki`, { params });
+    return response?.data?.data || { groups: [], partyId };
+  } catch (error) {
+    console.error('Error fetching party pending pakki saudas:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+async function getPartyPendingKachiSaudas(partyId, saudaType) {
+    try {
+      const params = {};
+      if (saudaType) params.saudaType = saudaType;
+      const response = await apiInstance.get(`/sauda/party/${partyId}/pending-kachi`, { params });
+      return response?.data?.data || { groups: [], partyId };
+    } catch (error) {
+      console.error('Error fetching party pending kachi saudas:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
 // Show the BR logo loader while requests are in flight
 attachLoaderInterceptors(apiInstance);
 
@@ -92,5 +117,7 @@ export default {
   updateSauda,
   deleteSauda,
   getSaudaList,
-  getPartyPendingSaudas
+  getPartyPendingSaudas,
+  getPartyPendingPakkiSaudas,
+  getPartyPendingKachiSaudas
 };

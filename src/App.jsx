@@ -26,6 +26,8 @@ const CreditDebitNote = lazy(() => import('./pages/CreditDebitNote'));
 const UserProfile = lazy(() => import('./pages/UserProfile'));
 const StockVerification = lazy(() => import('./pages/StockVerification'));
 const MetalPalta = lazy(() => import('./pages/MetalPalta'));
+const Pakki999 = lazy(() => import('./pages/Chorsa999'));
+const Reports = lazy(() => import('./pages/Reports'));
 
 function App() {
   const token = localStorage.getItem('token');
@@ -58,6 +60,10 @@ function App() {
                       <Route path="/profile" element={<UserProfile />} />
                       <Route path="/stock-verification" element={<StockVerification />} />
                       <Route path="/metal-palta" element={<MetalPalta />} />
+                      <Route path="/pakki-999" element={<Pakki999 />} />
+                      <Route path="/pakki-999/chorsa" element={<Pakki999 />} />
+                      <Route path="/pakki-999/bank" element={<Pakki999 />} />
+                      <Route path="/reports" element={<Reports />} />
                       <Route path="/settings" element={<div>Settings Page</div>} />
                     </Routes>
                   </Suspense>

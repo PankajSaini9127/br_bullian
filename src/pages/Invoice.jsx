@@ -32,6 +32,9 @@ import {
   Stack,
   Checkbox,
   FormControlLabel,
+  LinearProgress,
+  Alert,
+  Divider,
 } from '@mui/material';
 import {
   Print as PrintIcon,
@@ -45,11 +48,13 @@ import {
   KeyboardArrowUp as ExpandLessIcon,
   Bluetooth as BluetoothIcon,
   AssignmentReturn as AssignmentReturnIcon,
+  HourglassEmpty as PendingIcon,
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import partyService from '../services/partyService';
 import invoiceService from '../services/invoiceService';
+import saudaService from '../services/saudaService';
 import { printInvoiceThermal, printInvoiceBluetooth, isBluetoothSupported } from '../utils/thermalPrinter';
 import { roundOffFine, roundOffFineFormatted } from '../utils/roundOff';
 import { gradients } from '../theme';
@@ -74,8 +79,12 @@ const Invoice = () => {
     { id: 1, paggaNo: '', weight: '', touch: '', fine: '' },
     { id: 2, paggaNo: '', weight: '', touch: '', fine: '' },
     { id: 3, paggaNo: '', weight: '', touch: '', fine: '' },
-    { id: 4, paggaNo: '', weight: '', touch: '', fine: '' },
+    { id: 4, paggaNo: '', weight: '', touch: '' },
   ]);
+  // Kachi pending saudas state
+  const [pendingKachiGroups, setPendingKachiGroups] = useState([]);
+  const [loadingKachiPending, setLoadingKachiPending] = useState(false);
+  const [expandedKachiGroups, setExpandedKachiGroups] = useState({});
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -128,7 +137,6 @@ const Invoice = () => {
 
         const response = await invoiceService.getInvoices(params);
 
-        // Handle response structure: response.invoices and response.pagination
         let invoiceList = [];
         if (response && Array.isArray(response.invoices)) {
           invoiceList = response.invoices;
@@ -149,6 +157,25 @@ const Invoice = () => {
     fetchParties();
     fetchInvoices();
   }, [filterStartDate, filterEndDate, filterPartyId, page, limit]);
+
+  useEffect(() => {
+    const fetchPendingKachi = async () => {
+      if (!selectedPartyId) {
+        setPendingKachiGroups([]);
+        return;
+      }
+      setLoadingKachiPending(true);
+      try {
+        const response = await saudaService.getPartyPendingKachiSaudas(selectedPartyId, 'purchase');
+        setPendingKachiGroups(response?.groups || response?.data?.groups || []);
+      } catch (error) {
+        console.error('Error fetching pending kachi:', error);
+      } finally {
+        setLoadingKachiPending(false);
+      }
+    };
+    fetchPendingKachi();
+  }, [selectedPartyId]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(async () => {
@@ -186,8 +213,7 @@ const Invoice = () => {
         const updatedItem = { ...item, [field]: value };
 
         if (field === 'touch') {
-          // Format touch as XX.XX
-          let formattedValue = value.replace(/\D/g, ''); // Remove non-digits
+          let formattedValue = value.replace(/\D/g, '');
           if (formattedValue.length > 2) {
             formattedValue = formattedValue.slice(0, 2) + '.' + formattedValue.slice(2, 4);
           }
@@ -219,23 +245,18 @@ const Invoice = () => {
       const currentIndex = items.findIndex(item => item.id === id);
 
       if (field === 'paggaNo') {
-        // Move to weight field
         const weightInput = document.getElementById(`weight-${id}`);
         if (weightInput) weightInput.focus();
       } else if (field === 'weight') {
-        // Move to touch field
         const touchInput = document.getElementById(`touch-${id}`);
         if (touchInput) touchInput.focus();
       } else if (field === 'touch') {
-        // Move to next row's paggaNo or add new row
         const nextRowId = items[currentIndex + 1]?.id;
         if (nextRowId) {
           const nextPaggaNoInput = document.getElementById(`paggaNo-${nextRowId}`);
           if (nextPaggaNoInput) nextPaggaNoInput.focus();
         } else {
-          // Add new pagga row
           setPaggaCount(paggaCount + 1);
-          // Focus on the new row's paggaNo after a short delay
           setTimeout(() => {
             const newId = paggaCount + 1;
             const newPaggaNoInput = document.getElementById(`paggaNo-${newId}`);
@@ -259,10 +280,7 @@ const Invoice = () => {
     setEditPartyId(invoice.partyId?._id || invoice.partyId);
     setEditInvoiceDate(invoice.invoiceDate);
     setEditInvoiceNo(invoice.invoiceNo || '');
-
-    // Set current pagga from the invoice
     setEditCurrentPagga(invoice.items || []);
-
     setEditModalOpen(true);
   };
 
@@ -278,16 +296,13 @@ const Invoice = () => {
     const updatedPagga = editCurrentPagga.map((pagga, i) => {
       if (i === index) {
         const updatedItem = { ...pagga, [field]: value };
-
         if (field === 'touch') {
-          // Format touch as XX.XX
           let formattedValue = value.replace(/\D/g, '');
           if (formattedValue.length > 2) {
             formattedValue = formattedValue.slice(0, 2) + '.' + formattedValue.slice(2, 4);
           }
           updatedItem.touch = formattedValue;
         }
-
         if (field === 'weight' || field === 'touch') {
           const weight = field === 'weight' ? value : pagga.weight;
           const touch = field === 'touch' ? updatedItem.touch : pagga.touch;
@@ -298,7 +313,6 @@ const Invoice = () => {
             updatedItem.fine = '';
           }
         }
-
         return updatedItem;
       }
       return pagga;
@@ -314,49 +328,6 @@ const Invoice = () => {
     setEditInvoiceDate('');
   };
 
-  const handleEditItemChange = (id, field, value) => {
-    const updatedItems = editItems.map((item) => {
-      if (item.id === id) {
-        const updatedItem = { ...item, [field]: value };
-
-        if (field === 'touch') {
-          let formattedValue = value.replace(/\D/g, '');
-          if (formattedValue.length > 2) {
-            formattedValue = formattedValue.slice(0, 2) + '.' + formattedValue.slice(2, 4);
-          }
-          updatedItem.touch = formattedValue;
-        }
-
-        if (field === 'weight' || field === 'touch') {
-          const weight = field === 'weight' ? value : item.weight;
-          const touch = field === 'touch' ? updatedItem.touch : item.touch;
-          if (weight && touch) {
-            const fine = parseFloat(weight) * (parseFloat(touch) / 100);
-            updatedItem.fine = roundOffFineFormatted(fine);
-          } else {
-            updatedItem.fine = '';
-          }
-        }
-
-        return updatedItem;
-      }
-      return item;
-    });
-    setEditItems(updatedItems);
-  };
-
-  const handleRemoveEditItem = (id) => {
-    if (editItems.length > 1) {
-      const updatedItems = editItems.filter(item => item.id !== id);
-      setEditItems(updatedItems);
-    }
-  };
-
-  const handleAddEditItem = () => {
-    const newId = Math.max(...editItems.map(item => item.id)) + 1;
-    setEditItems([...editItems, { id: newId, paggaNo: '', weight: '', touch: '', fine: '' }]);
-  };
-
   const handleUpdateInvoice = async () => {
     const toastId = toast.loading('Updating invoice...');
     try {
@@ -365,28 +336,19 @@ const Invoice = () => {
         toast.error('Please select a party');
         return;
       }
-
       const invoiceData = {
         partyId: editPartyId,
         invoiceDate: editInvoiceDate,
         invoiceNo: editInvoiceNo,
         paggaItems: editCurrentPagga,
       };
-
       await invoiceService.updateInvoiceDetails(editingInvoice._id || editingInvoice.id, invoiceData);
-
-      // Refresh invoice list
-      const params = {
-        page,
-        limit,
-      };
+      const params = { page, limit };
       if (filterStartDate) params.startDate = filterStartDate;
       if (filterEndDate) params.endDate = filterEndDate;
       if (filterPartyId) params.partyId = filterPartyId;
-
       const response = await invoiceService.getInvoices(params);
       setInvoices(response?.invoices || response || []);
-
       handleCloseEditModal();
       toast.dismiss(toastId);
       toast.success('Invoice updated successfully!');
@@ -397,7 +359,6 @@ const Invoice = () => {
     }
   };
 
-  // Return functions
   const handleReturnInvoice = async (invoice) => {
     setReturnInvoice(invoice);
     setReturnItems(invoice.items?.map(item => ({
@@ -417,25 +378,6 @@ const Invoice = () => {
     setReturnSelectAll(false);
     setReturnInvoiceDate(new Date().toISOString().split('T')[0]);
     setReturnAvailablePagga([]);
-  };
-
-  const handleReturnFromInvoice = async (invoice) => {
-    setShowReturnForm(true);
-    setReturnPartyId(invoice.partyId?._id || invoice.partyId);
-    setReturnPartyName(invoice.partyId?.partyName || invoice.partyName || '');
-    setReturnCheckedPagga({});
-    setReturnSelectAll(false);
-    setReturnInvoiceDate(new Date().toISOString().split('T')[0]);
-    setReturnAvailablePagga([]);
-    if (invoice.partyId?._id || invoice.partyId) {
-      try {
-        const response = await invoiceService.getAvailablePagga(invoice.partyId?._id || invoice.partyId);
-        setReturnAvailablePagga(response?.puggas || []);
-      } catch (error) {
-        console.error('Error fetching available pagga:', error);
-        setReturnAvailablePagga([]);
-      }
-    }
   };
 
   const handleCloseReturnForm = () => {
@@ -474,50 +416,28 @@ const Invoice = () => {
     setReturnSelectAll(false);
   };
 
-  const handleCloseReturnModal = () => {
-    setReturnModalOpen(false);
-    setReturnInvoice(null);
-    setReturnItems([]);
-  };
-
-  const handleReturnQuantityChange = (index, value) => {
-    const updatedItems = [...returnItems];
-    updatedItems[index].returnQuantity = value;
-    updatedItems[index].returnFine = value * updatedItems[index].returnTouch / 100;
-    setReturnItems(updatedItems);
-  };
-
   const handleSaveReturnInvoice = async () => {
     const toastId = toast.loading('Creating return invoice...');
     try {
       const selectedPaggaIds = Object.keys(returnCheckedPagga).filter(id => returnCheckedPagga[id]);
-
       if (selectedPaggaIds.length === 0) {
         toast.dismiss(toastId);
         toast.error('Please select at least one pagga');
         return;
       }
-
       const returnInvoiceData = {
         isReturn: true,
         partyId: returnPartyId,
         invoiceDate: returnInvoiceDate,
         puggaIds: selectedPaggaIds,
       };
-
       await invoiceService.createInvoice(returnInvoiceData);
-
-      const params = {
-        page,
-        limit,
-      };
+      const params = { page, limit };
       if (filterStartDate) params.startDate = filterStartDate;
       if (filterEndDate) params.endDate = filterEndDate;
       if (filterPartyId) params.partyId = filterPartyId;
-
       const response = await invoiceService.getInvoices(params);
       setInvoices(response?.invoices || response || []);
-
       handleCloseReturnForm();
       toast.dismiss(toastId);
       toast.success('Return invoice created successfully');
@@ -556,20 +476,16 @@ const Invoice = () => {
     const toastId = toast.loading('Saving invoice...');
     try {
       setFormError('');
-
       if (!excessWeight || !excessRate) {
         toast.dismiss(toastId);
         setFormError('Please fill weight and rate');
         return;
       }
-
-      // Filter out empty pagga items
       const filledPaggaItems = items.filter(item =>
         item.paggaNo && item.paggaNo.trim() !== '' &&
         item.weight && item.weight.trim() !== '' &&
         item.touch && item.touch.trim() !== ''
       );
-
       const invoiceData = {
         partyId: selectedPartyId,
         invoiceDate: invoiceDate,
@@ -580,10 +496,7 @@ const Invoice = () => {
           amount: excessFine
         }
       };
-
       await invoiceService.createInvoice(invoiceData);
-
-      // Refresh invoice list from API
       const response = await invoiceService.getInvoices();
       let invoiceList = [];
       if (Array.isArray(response)) {
@@ -594,7 +507,6 @@ const Invoice = () => {
         invoiceList = response.data;
       }
       setInvoices(invoiceList);
-
       setSelectedPartyId('');
       setSelectedPartyName('');
       setInvoiceDate(today);
@@ -622,7 +534,6 @@ const Invoice = () => {
   };
 
   const handleExcessRateChange = (value) => {
-    // Remove commas for storage
     const cleanValue = value.replace(/,/g, '');
     setExcessRate(cleanValue);
   };
@@ -667,22 +578,16 @@ const Invoice = () => {
     const toastId = toast.loading('Saving invoice...');
     try {
       setFormError('');
-
-      // Validation: Pagga count must be greater than 0
       if (!paggaCount || paggaCount <= 0) {
         toast.dismiss(toastId);
         setFormError('Pagga count must be greater than 0');
         return;
       }
-
-      // Validation: If any one of paggaNo, weight, or touch is filled, all three are required
       for (const item of items) {
         const hasPaggaNo = item.paggaNo && item.paggaNo.trim() !== '';
         const hasWeight = item.weight && item.weight.trim() !== '';
         const hasTouch = item.touch && item.touch.trim() !== '';
-
         const hasAnyValue = hasPaggaNo || hasWeight || hasTouch;
-
         if (hasAnyValue) {
           if (!hasPaggaNo) {
             toast.dismiss(toastId);
@@ -701,29 +606,22 @@ const Invoice = () => {
           }
         }
       }
-
-      // Filter out empty pagga items (only send items where all three fields are filled)
       const filledPaggaItems = items.filter(item =>
         item.paggaNo && item.paggaNo.trim() !== '' &&
         item.weight && item.weight.trim() !== '' &&
         item.touch && item.touch.trim() !== ''
       );
-
       if (filledPaggaItems.length === 0) {
         toast.dismiss(toastId);
         setFormError('Please fill at least one pagga item with Pagga No, Weight, and Touch');
         return;
       }
-
-      // Calculate total fine from items
       const totalFine = items.reduce((total, item) => {
         const weight = parseFloat(item.weight) || 0;
         const touch = parseFloat(item.touch) || 0;
         const fine = weight * touch / 100;
         return total + roundOffFine(fine);
       }, 0);
-
-      // Check if invoice fine exceeds remaining purchase fine
       const remainingPurchaseFine = partySaudaSummary?.purchase?.remaining || 0;
       if (totalFine > remainingPurchaseFine) {
         toast.dismiss(toastId);
@@ -733,16 +631,12 @@ const Invoice = () => {
         setExcessFineModalOpen(true);
         return;
       }
-
       const invoiceData = {
         partyId: selectedPartyId,
         invoiceDate: invoiceDate,
         paggaItems: filledPaggaItems,
       };
-
       await invoiceService.createInvoice(invoiceData);
-
-      // Refresh invoice list from API
       const response = await invoiceService.getInvoices();
       let invoiceList = [];
       if (Array.isArray(response)) {
@@ -753,7 +647,6 @@ const Invoice = () => {
         invoiceList = response.data;
       }
       setInvoices(invoiceList);
-
       setSelectedPartyId('');
       setSelectedPartyName('');
       setInvoiceDate(today);
@@ -789,20 +682,18 @@ const Invoice = () => {
   };
 
   const handlePrintInvoice = (invoice) => {
-    // Calculate required height based on content
     const itemCount = invoice.items?.filter(item => item.paggaNo || item.weight || item.touch || item.fine).length || 0;
-    const itemHeight = itemCount * 6; // 6mm per item
-    const headerHeight = 44; // Header content
-    const footerHeight = 28; // Footer content
-    const requiredHeight = headerHeight + itemHeight + footerHeight + 20; // +20mm padding
+    const itemHeight = itemCount * 6;
+    const headerHeight = 44;
+    const footerHeight = 28;
+    const requiredHeight = headerHeight + itemHeight + footerHeight + 20;
 
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
-      format: [80, Math.max(requiredHeight, 50)], // 80mm fixed width, dynamic height (min 50mm)
+      format: [80, Math.max(requiredHeight, 50)],
     });
 
-    // Calculate totals first
     const totalGrossWeight = invoice.items?.reduce((total, item) => total + (parseFloat(item.weight) || 0), 0).toFixed(2);
     const totalFine = invoice.items?.reduce((total, item) => {
       const weight = parseFloat(item.weight) || 0;
@@ -811,7 +702,6 @@ const Invoice = () => {
       return total + roundOffFine(fine);
     }, 0).toFixed(2);
 
-    // Add header
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('BR BULLION', 40, 10, { align: 'center' });
@@ -820,20 +710,16 @@ const Invoice = () => {
     doc.setFont('helvetica', 'normal');
     doc.text('Incoming Invoice', 40, 16, { align: 'center' });
 
-    // Add separator line
     doc.line(5, 18, 75, 18);
 
-    // Add party and date info
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text(`Party: ${invoice.partyId?.partyName || invoice.partyName || '-'}`, 5, 24);
     doc.text(`Date: ${invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : 'N/A'}`, 5, 30);
     doc.text(`Invoice No: ${invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0')}`, 5, 36);
 
-    // Add separator line
     doc.line(5, 38, 75, 38);
 
-    // Add table header
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.text('Sr', 5, 44);
@@ -842,10 +728,8 @@ const Invoice = () => {
     doc.text('Touch', 50, 44);
     doc.text('Fine(g)', 62, 44);
 
-    // Add separator line
     doc.line(5, 46, 75, 46);
 
-    // Add items
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     let yPosition = 52;
@@ -866,23 +750,19 @@ const Invoice = () => {
       }
     });
 
-    // Add separator line
     doc.line(5, yPosition, 75, yPosition);
     yPosition += 6;
 
-    // Add totals at the bottom
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
     doc.text(`Total Fine: ${totalFine}g`, 5, yPosition);
     doc.text(`Gross Wt: ${totalGrossWeight}g`, 5, yPosition + 6);
     
-    // Add footer
     doc.line(5, yPosition + 16, 75, yPosition + 16);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
     doc.text('Thank you for your business!', 40, yPosition + 22, { align: 'center' });
     
-    // Save PDF
     const partyName = invoice?.partyId?.partyName || invoice?.partyName || 'invoice';
     doc.save(`${partyName}-${invoice?.invoiceNo || 'unknown'}.pdf`);
   };
@@ -905,7 +785,6 @@ const Invoice = () => {
         </Typography>
       </Box>
 
-      {/* Invoice List - Show by default */}
       {!showAddForm && (
         <>
            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -947,9 +826,7 @@ const Invoice = () => {
                 </Box>
               </Box>
 
-          {/* Invoice List */}
-          {invoices.length > 0 ? (
-            <Paper
+          <Paper
               elevation={3}
               sx={{
                 p: 3,
@@ -958,27 +835,21 @@ const Invoice = () => {
                 border: '1px solid', borderColor: 'divider',
               }}
             >
-           
-              {/* Filters */}
+              {/* Filters — always visible */}
               <Grid container spacing={2} sx={{ mb: 3 }}>
                 <Grid item xs={12} sm={4}>
                   <TextField
                     fullWidth
                     size="small"
-                    label="Start Date"
+                    label="From Date"
                     type="date"
                     value={filterStartDate}
-                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    onChange={(e) => { setFilterStartDate(e.target.value); setPage(1); }}
                     InputLabelProps={{ shrink: true }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#818cf8',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#6366f1',
-                          borderWidth: 2,
-                        },
+                        '&:hover fieldset': { borderColor: '#818cf8' },
+                        '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
                       },
                     }}
                   />
@@ -987,20 +858,15 @@ const Invoice = () => {
                   <TextField
                     fullWidth
                     size="small"
-                    label="End Date"
+                    label="To Date"
                     type="date"
                     value={filterEndDate}
-                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    onChange={(e) => { setFilterEndDate(e.target.value); setPage(1); }}
                     InputLabelProps={{ shrink: true }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
-                        '&:hover fieldset': {
-                          borderColor: '#818cf8',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: '#6366f1',
-                          borderWidth: 2,
-                        },
+                        '&:hover fieldset': { borderColor: '#818cf8' },
+                        '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
                       },
                     }}
                   />
@@ -1009,7 +875,6 @@ const Invoice = () => {
                   <Autocomplete
                     loading={false}
                     fullWidth
-                    sx={{ minWidth: { md: '200px' } }}
                     options={partySearchQuery ? partySearchResults : parties}
                     getOptionLabel={(option) => option.partyName || ''}
                     isOptionEqualToValue={(option, value) => option?._id === value?._id}
@@ -1017,11 +882,10 @@ const Invoice = () => {
                     onChange={(e, newValue) => {
                       setFilterPartyId(newValue?._id || '');
                       setPartySearchQuery('');
+                      setPage(1);
                     }}
                     onInputChange={(event, newInputValue, reason) => {
-                      if (reason === 'input') {
-                        setPartySearchQuery(newInputValue);
-                      }
+                      if (reason === 'input') setPartySearchQuery(newInputValue);
                     }}
                     renderInput={(params) => (
                       <TextField
@@ -1032,13 +896,8 @@ const Invoice = () => {
                         InputLabelProps={{ shrink: true }}
                         sx={{
                           '& .MuiOutlinedInput-root': {
-                            '&:hover fieldset': {
-                              borderColor: '#818cf8',
-                            },
-                            '&.Mui-focused fieldset': {
-                              borderColor: '#6366f1',
-                              borderWidth: 2,
-                            },
+                            '&:hover fieldset': { borderColor: '#818cf8' },
+                            '&.Mui-focused fieldset': { borderColor: '#6366f1', borderWidth: 2 },
                           },
                         }}
                       />
@@ -1057,18 +916,16 @@ const Invoice = () => {
                     sx={{
                       borderColor: '#6366f1',
                       color: '#6366f1',
-                      '&:hover': {
-                        borderColor: '#4338ca',
-                        background: 'rgba(99, 102, 241, 0.1)',
-                      },
+                      '&:hover': { borderColor: '#4338ca', background: 'rgba(99, 102, 241, 0.1)' },
                     }}
                   >
                     Reset Filters
                   </Button>
                 </Grid>
               </Grid>
-              <TableContainer>
-                <Table>
+
+              <TableContainer sx={{ overflowX: 'auto' }}>
+                <Table sx={{ minWidth: { xs: 800, sm: '100%' } }}>
                   <TableHead>
                     <TableRow sx={{ background: gradients.primary }}>
                       <TableCell sx={{ color: '#fff', fontWeight: 600, width: 50 }}>Sr No</TableCell>
@@ -1080,139 +937,99 @@ const Invoice = () => {
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Gross Weight (g)</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Total Fine (g)</TableCell>
                       <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>View</TableCell>
-                      {/* <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Edit</TableCell> */}
                       <TableCell sx={{ color: '#fff', fontWeight: 600, width: '100px' }}>Action</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {invoices.map((invoice,index) => (
-                      <TableRow
-                        key={invoice.id}
-                      >
-                        <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0')}</TableCell>
-                        <TableCell>{invoice?.partyId?.partyName || '-'}</TableCell>
-                        <TableCell>{invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-'}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={invoice.isReturn ? 'Return' : 'Purchase'}
-                            size="small"
-                            sx={{
-                              bgcolor: invoice.isReturn ? 'rgba(254, 243, 199, 0.15)' : 'rgba(219, 234, 254, 0.15)',
-                              color: invoice.isReturn ? '#92400e' : '#1e40af',
-                              fontWeight: 600,
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={invoice.items?.length || 0}
-                            size="small"
-                            sx={{
-                              bgcolor: 'rgba(219, 234, 254, 0.15)',
-                              color: '#1e40af',
-                              fontWeight: 600,
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>
-                          {invoice.items?.reduce((total, item) => total + (parseFloat(item.weight) || 0), 0).toFixed(2)} g
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600, color: '#ec4899' }}>
-                          {invoice.items?.reduce((total, item) => {
-                            const weight = parseFloat(item.weight) || 0;
-                            const touch = parseFloat(item.touch) || 0;
-                            const fine = weight * touch / 100;
-                            return total + roundOffFine(fine);
-                          }, 0).toFixed(2)} g
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip title="View">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleViewInvoice(invoice)}
-                              sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell>
-                          <Tooltip title="Edit">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleEditInvoice(invoice)}
-                              sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                          </Tooltip>
-                        {/* </TableCell>
-                        <TableCell> */}
-                          <Tooltip title="Download PDF">
-                            <IconButton
-                              size="small"
-                              onClick={() => handlePrintInvoice(invoice)}
-                              sx={{ color: '#10b981', '&:hover': { background: 'rgba(16, 185, 129, 0.1)' } }}
-                            >
-                              <DownloadIcon />
-                            </IconButton>
-                          </Tooltip>
-                        {/* </TableCell>
-                        <TableCell> */}
-                          <Tooltip title="Print">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleBluetoothPrintInvoice(invoice)}
-                              sx={{ color: '#3b82f6', '&:hover': { background: 'rgba(59, 130, 246, 0.1)' } }}
-                            >
-                              <PrintIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
+                    {invoices.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                          No invoices found. Use filters above or click "Add Invoice" to create one.
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      invoices.map((invoice, index) => (
+                        <TableRow key={invoice._id || index}>
+                          <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>{invoice.invoiceNo || 'INV-' + String(invoice.id).padStart(4, '0')}</TableCell>
+                          <TableCell>{invoice?.partyId?.partyName || '-'}</TableCell>
+                          <TableCell>{invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : '-'}</TableCell>
+                          <TableCell>
+                            <Chip
+                              label={invoice.isReturn ? 'Return' : 'Purchase'}
+                              size="small"
+                              sx={{
+                                bgcolor: invoice.isReturn ? 'rgba(254, 243, 199, 0.15)' : 'rgba(219, 234, 254, 0.15)',
+                                color: invoice.isReturn ? '#92400e' : '#1e40af',
+                                fontWeight: 600,
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Chip
+                              label={invoice.items?.length || 0}
+                              size="small"
+                              sx={{ bgcolor: 'rgba(219, 234, 254, 0.15)', color: '#1e40af', fontWeight: 600 }}
+                            />
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 600 }}>
+                            {invoice.items?.reduce((total, item) => total + (parseFloat(item.weight) || 0), 0).toFixed(2)} g
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 600, color: '#ec4899' }}>
+                            {invoice.items?.reduce((total, item) => {
+                              const weight = parseFloat(item.weight) || 0;
+                              const touch = parseFloat(item.touch) || 0;
+                              return total + roundOffFine(weight * touch / 100);
+                            }, 0).toFixed(2)} g
+                          </TableCell>
+                          <TableCell>
+                            <Tooltip title="View">
+                              <IconButton size="small" onClick={() => handleViewInvoice(invoice)}
+                                sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}>
+                                <VisibilityIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell>
+                            <Tooltip title="Edit">
+                              <IconButton size="small" onClick={() => handleEditInvoice(invoice)}
+                                sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}>
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Download PDF">
+                              <IconButton size="small" onClick={() => handlePrintInvoice(invoice)}
+                                sx={{ color: '#10b981', '&:hover': { background: 'rgba(16, 185, 129, 0.1)' } }}>
+                                <DownloadIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Print">
+                              <IconButton size="small" onClick={() => handleBluetoothPrintInvoice(invoice)}
+                                sx={{ color: '#3b82f6', '&:hover': { background: 'rgba(59, 130, 246, 0.1)' } }}>
+                                <PrintIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </TableContainer>
 
-              {/* Pagination */}
               <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                 <Pagination
                   count={totalPages}
                   page={page}
                   onChange={(e, value) => setPage(value)}
                   color="primary"
-                  sx={{
-                    '& .MuiPaginationItem-root': {
-                      fontWeight: 600,
-                    },
-                  }}
+                  sx={{ '& .MuiPaginationItem-root': { fontWeight: 600 } }}
                 />
               </Box>
             </Paper>
-          ) : (
-            <Paper
-              elevation={3}
-              sx={{
-                p: 3,
-                borderRadius: 2,
-                boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-                border: '1px solid', borderColor: 'divider',
-              }}
-            >
-              <Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: 'text.primary' }}>
-                No Invoices Found
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Click the "Add Invoice" button to create your first invoice.
-              </Typography>
-            </Paper>
-          )}
         </>
       )}
 
-      {/* Create Invoice Form - Show when showAddForm is true */}
       {showAddForm && (
         <>
           <Paper
@@ -1291,6 +1108,185 @@ const Invoice = () => {
                   )}
                 />
               </Grid>
+                {pendingKachiGroups.length > 0 && (
+                  <Grid item xs={12}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, mt: 1 }}>
+                      <PendingIcon sx={{ color: '#f59e0b', fontSize: 22 }} />
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                        Pending Kachi Saudas
+                      </Typography>
+                      {loadingKachiPending && (
+                        <LinearProgress sx={{ width: 80, ml: 1, borderRadius: 2 }} />
+                      )}
+                    </Box>
+
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      {pendingKachiGroups.map((group) => {
+                        const groupKey = `${group.saudaType}`;
+                        const isExpanded = expandedKachiGroups[groupKey];
+                        const deliveredPct = group.totalQuantity > 0
+                          ? Math.round((group.totalDelivered / group.totalQuantity) * 100)
+                          : 0;
+                        const isBuy = group.saudaType === 'purchase';
+                        const cardColor = isBuy ? '#f59e0b' : '#3b82f6';
+
+                        return (
+                          <Grid item xs={12} md={6} key={groupKey}>
+                            <Paper
+                              elevation={2}
+                              sx={{
+                                borderRadius: 3,
+                                overflow: 'hidden',
+                                border: `2px solid ${cardColor}22`,
+                                boxShadow: `0 4px 16px ${cardColor}22`,
+                              }}
+                            >
+                              {/* Card Header */}
+                              <Box
+                                sx={{
+                                  background: `linear-gradient(135deg, ${cardColor}dd, ${cardColor}99)`,
+                                  px: 2.5,
+                                  py: 1.5,
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <Box>
+                                  <Typography variant="subtitle2" sx={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>
+                                    {isBuy ? '🛒 Purchase (Kachi)' : '💰 Sales (Kachi)'}
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+                                    {group.saudas.length} sauda{group.saudas.length > 1 ? 's' : ''} pending
+                                  </Typography>
+                                </Box>
+                                {/* Cross status badge */}
+                                {group.saudas.some(s => s.status === 'cross') && (
+                                  <Chip label="Cross" color="warning" size="small" sx={{ ml: 1, backgroundColor: 'rgba(255,165,0,0.2)', color: '#fff' }} />
+                                )}
+                                {/* Remaining quantity chip */}
+                                <Chip
+                                  label={`${group.totalRemaining} g remaining`}
+                                  size="small"
+                                  sx={{
+                                    background: 'rgba(255,255,255,0.25)',
+                                    color: '#fff',
+                                    fontWeight: 700,
+                                    backdropFilter: 'blur(4px)',
+                                    ml: 2,
+                                  }}
+                                />
+                              </Box>
+
+                              {/* Progress Bar */}
+                              <Box sx={{ px: 2.5, pt: 1.5 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                    Total: {group.totalQuantity} g
+                                  </Typography>
+                                  <Typography variant="caption" sx={{ color: cardColor, fontWeight: 700 }}>
+                                    Delivered: {group.totalDelivered} g ({deliveredPct}%)
+                                  </Typography>
+                                </Box>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={deliveredPct}
+                                  sx={{
+                                    height: 8,
+                                    borderRadius: 4,
+                                    backgroundColor: `${cardColor}22`,
+                                    '& .MuiLinearProgress-bar': {
+                                      backgroundColor: cardColor,
+                                      borderRadius: 4,
+                                    },
+                                  }}
+                                />
+                              </Box>
+
+                              {/* Expand/Collapse Toggle */}
+                              <Box
+                                sx={{
+                                  px: 2.5,
+                                  py: 1,
+                                  display: 'flex',
+                                  justifyContent: 'flex-end',
+                                  cursor: 'pointer',
+                                }}
+                                onClick={() =>
+                                  setExpandedKachiGroups((prev) => ({
+                                    ...prev,
+                                    [groupKey]: !prev[groupKey],
+                                  }))
+                                }
+                              >
+                                <Typography
+                                  variant="caption"
+                                  sx={{ color: cardColor, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}
+                                >
+                                  {isExpanded ? 'Hide details' : 'Show details'}
+                                  {isExpanded ? <ExpandLessIcon sx={{ fontSize: 16 }} /> : <ExpandMoreIcon sx={{ fontSize: 16 }} />}
+                                </Typography>
+                              </Box>
+
+                              {/* Sauda Detail Rows */}
+                              <Collapse in={isExpanded}>
+                                <Divider />
+                                <Box sx={{ px: 2, pb: 1.5 }}>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Sauda No</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Date</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Qty (g)</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Delivered</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Remaining</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Rate</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: '0.72rem', py: 0.5 }}>Status</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {group.saudas.map((s) => (
+                                        <TableRow key={s._id} sx={{ '&:hover': { background: `${cardColor}11` } }}>
+                                          <TableCell sx={{ fontSize: '0.78rem', py: 0.75, fontWeight: 600, color: cardColor }}>#{s.saudaNo}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.78rem', py: 0.75 }}>
+                                            {s.saudaDate ? new Date(s.saudaDate).toLocaleDateString('en-GB') : '-'}
+                                          </TableCell>
+                                          <TableCell sx={{ fontSize: '0.78rem', py: 0.75 }}>{s.quantity}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.78rem', py: 0.75, color: '#10b981', fontWeight: 600 }}>{s.delivered}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.78rem', py: 0.75, color: '#ef4444', fontWeight: 700 }}>{s.remaining}</TableCell>
+                                          <TableCell sx={{ fontSize: '0.78rem', py: 0.75 }}>{s.rate || '-'}</TableCell>
+                                          <TableCell sx={{ py: 0.75 }}>
+                                            <Chip
+                                              label={s.status}
+                                              size="small"
+                                              sx={{
+                                                fontSize: '0.68rem',
+                                                fontWeight: 700,
+                                                backgroundColor: s.status === 'pending' ? '#fef3c7' : '#dbeafe',
+                                                color: s.status === 'pending' ? '#92400e' : '#1e40af',
+                                              }}
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </Box>
+                              </Collapse>
+                            </Paper>
+                          </Grid>
+                        );
+                      })}
+                    </Grid>
+                  </Grid>
+                )}
+                {selectedPartyId && !loadingKachiPending && pendingKachiGroups.length === 0 && (
+                  <Grid item xs={12}>
+                    <Alert severity="info" sx={{ mt: 1, mb: 1, borderRadius: 2 }}>
+                      Is party ke koi pending kachi saudas nahi hain!
+                    </Alert>
+                  </Grid>
+                )}
               <Grid item xs={12} sm={6} md={3}>
                 <TextField
                   fullWidth
@@ -1356,9 +1352,6 @@ const Invoice = () => {
                         Sauda Summary
                       </Typography>
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                        {/* <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                          Remaining Sales Fine: <strong>{partySaudaSummary.sales?.remaining || 0}g</strong>
-                        </Typography> */}
                         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                           Remaining Purchase Fine: <strong>{partySaudaSummary.purchase?.remaining || 0}g</strong>
                         </Typography>
@@ -1370,7 +1363,6 @@ const Invoice = () => {
             </Grid>
           </Paper>
 
-          {/* Pagga Table */}
           <Paper
             elevation={1}
             sx={{
@@ -1561,7 +1553,6 @@ const Invoice = () => {
               </Table>
             </TableContainer>
 
-            {/* Summary Section */}
             <Box
               sx={{
                 mt: { xs: 1.5, sm: 3 },
@@ -1623,7 +1614,6 @@ const Invoice = () => {
         </>
       )}
 
-      {/* View Invoice Modal */}
       <Dialog open={viewModalOpen} onClose={handleCloseViewModal} maxWidth="md" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle sx={{ background: gradients.primary, color: '#fff' }}>
           Invoice Details
@@ -1718,7 +1708,6 @@ const Invoice = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Edit Invoice Modal */}
       <Dialog open={editModalOpen} onClose={handleCloseEditModal} maxWidth="lg" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle>Edit Invoice</DialogTitle>
         <DialogContent>
@@ -1889,11 +1878,9 @@ const Invoice = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Return Form Modal */}
       <Dialog open={showReturnForm} onClose={handleCloseReturnForm} maxWidth="lg" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle>Purchase Return Invoice</DialogTitle>
         <DialogContent>
-          {/* Total Fine Display */}
           <Box
             sx={{
               mb: 3,
@@ -2105,7 +2092,6 @@ const Invoice = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Excess Fine Modal */}
       <Dialog open={excessFineModalOpen} onClose={handleCloseExcessFineModal} maxWidth="sm" fullWidth>
         <DialogTitle>Bhav Cuts</DialogTitle>
         <DialogContent>
@@ -2155,7 +2141,6 @@ const Invoice = () => {
 
 export default Invoice;
 
-// Add thermal printer styles
 const thermalStyle = document.createElement('style');
 thermalStyle.textContent = `
   @media print {

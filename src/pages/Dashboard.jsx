@@ -3,7 +3,6 @@ import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   Container,
-  Paper,
   Typography,
   Box,
   Grid,
@@ -12,160 +11,101 @@ import {
   TextField,
 } from '@mui/material';
 import {
-  TrendingUp as IncomingIcon,
-  TrendingDown as OutgoingIcon,
   ShoppingCart as PurchaseIcon,
   Sell as SalesIcon,
-  Pending as PendingIcon,
-  Inventory as DukanStockIcon,
   AccountBalanceWallet as CaseInHandIcon,
+  AccountBalance as BankIcon,
+  SyncAlt as ChorsaIcon,
+  SwapHoriz as SwapHorizIcon,
 } from '@mui/icons-material';
 import salesInvoiceService from '../services/salesInvoiceService';
 import { gradients } from '../theme';
+import { useThemeMode } from '../context/ThemeContext';
 
 const Dashboard = () => {
+  const { mode } = useThemeMode();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [metrics, setMetrics] = useState({
-    todayFineIncoming: 0,
-    todayFineOutgoing: 0,
-    todayPurchaseSauda: 0,
-    todaySalesSauda: 0,
-    totalPendingSauda: 0,
-  });
+  const [loading, setLoading] = useState(false);
   const [dashboardData, setDashboardData] = useState({
-    cashInHand: { openingBalance: 0, balanceWeight: 0, openingFine: 0, balanceFine: 0 },
-    stock: { totalPuggas: 0, totalFine: 0, openingFine: 0, balanceFine: 0 },
-    dukanStock: { totalPuggas: 0, totalFine: 0 },
-    incoming: { totalInvoices: 0, totalPuggas: 0, totalFine: 0 },
-    sales: { totalInvoices: 0, totalPuggas: 0, totalFine: 0 },
+    kachi: { purchaseWeight: 0, purchaseFine: 0, sellWeight: 0, sellFine: 0 },
+    exchange: { kachiWeight: 0, kachiFine: 0, badlaWeight: 0, givenSilver: 0 },
+    chorsa: { buyWeight: 0, sellWeight: 0, stockToday: 0, stockYesterday: 0 },
+    bank: { buyWeight: 0, sellWeight: 0, stockToday: 0, stockYesterday: 0 },
+    cashInHand: { today: 0, yesterday: 0 },
+    kachiStock: { todayPuggas: 0, todayFine: 0, yesterdayPuggas: 0, yesterdayFine: 0 }
   });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
+      setLoading(true);
       try {
-        const response = await salesInvoiceService.getDashboard({ date: selectedDate });
-        const data = response?.data?.data || response?.data || {};
+        const res = await salesInvoiceService.getDashboard({ date: selectedDate });
+        const data = res?.data?.data || res?.data || {};
+        
         setDashboardData({
-          cashInHand: data?.cashInHand || { openingBalance: 0, balanceWeight: 0, openingFine: 0, balanceFine: 0 },
-          stock: data?.stock || { totalPuggas: 0, totalFine: 0, openingFine: 0, balanceFine: 0 },
-          dukanStock: data?.dukanStock || { totalPuggas: 0, totalFine: 0 },
-          incoming: data?.incoming || { totalInvoices: 0, totalPuggas: 0, totalFine: 0 },
-          sales: data?.sales || { totalInvoices: 0, totalPuggas: 0, totalFine: 0 },
+          kachi: data.kachi || { purchaseWeight: 0, purchaseFine: 0, sellWeight: 0, sellFine: 0 },
+          exchange: data.exchange || { kachiWeight: 0, kachiFine: 0, badlaWeight: 0, givenSilver: 0 },
+          chorsa: data.chorsa || { buyWeight: 0, sellWeight: 0, stockToday: 0, stockYesterday: 0 },
+          bank: data.bank || { buyWeight: 0, sellWeight: 0, stockToday: 0, stockYesterday: 0 },
+          cashInHand: data.cashInHand || { today: 0, yesterday: 0 },
+          kachiStock: data.kachiStock || { todayPuggas: 0, todayFine: 0, yesterdayPuggas: 0, yesterdayFine: 0 }
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchDashboardData();
   }, [selectedDate]);
 
-  useEffect(() => {
-    // Calculate metrics from local storage or API
-    // For now, using placeholder values
-    const calculateMetrics = () => {
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Get data from localStorage (you can replace with API calls)
-      const saudaList = JSON.parse(localStorage.getItem('saudaList') || '[]');
-      const invoiceList = JSON.parse(localStorage.getItem('invoiceList') || '[]');
-      const salesInvoiceList = JSON.parse(localStorage.getItem('salesInvoiceList') || '[]');
-
-      // Today's fine from incoming invoices
-      const todayFineIncoming = invoiceList
-        .filter(inv => inv.date === today)
-        .reduce((sum, inv) => sum + (parseFloat(inv.totalFine) || 0), 0);
-
-      // Today's fine from outgoing (sales) invoices
-      const todayFineOutgoing = salesInvoiceList
-        .filter(inv => inv.date === today)
-        .reduce((sum, inv) => sum + (parseFloat(inv.totalFine) || 0), 0);
-
-      // Today's purchase sauda
-      const todayPurchaseSauda = saudaList
-        .filter(sauda => sauda.saudaDate === today && sauda.type === 'purchase')
-        .reduce((sum, sauda) => sum + (parseFloat(sauda.totalAmount) || 0), 0);
-
-      // Today's sales sauda
-      const todaySalesSauda = saudaList
-        .filter(sauda => sauda.saudaDate === today && sauda.type === 'sales')
-        .reduce((sum, sauda) => sum + (parseFloat(sauda.totalAmount) || 0), 0);
-
-      // Total pending sauda (booked qty - delivered qty)
-      const totalPendingSauda = saudaList.reduce((sum, sauda) => {
-        const bookedQty = parseFloat(sauda.quantity) || 0;
-        const deliveredQty = parseFloat(sauda.deliveredQuantity) || parseFloat(sauda.delivered) || 0;
-        return sum + (bookedQty - deliveredQty);
-      }, 0);
-
-      setMetrics({
-        todayFineIncoming,
-        todayFineOutgoing,
-        todayPurchaseSauda,
-        todaySalesSauda,
-        totalPendingSauda,
-      });
-    };
-
-    calculateMetrics();
-  }, []);
-
-  const MetricCard = ({ title, value, icon, color, gradient, subtitle }) => (
+  const MetricCard = ({ title, value, icon, color, subtitle }) => (
     <Card
       sx={{
         borderRadius: 3,
-        boxShadow: '0 8px 32px rgba(99, 102, 241, 0.15)',
-        border: '1px solid', borderColor: 'divider',
+        borderLeft: `6px solid ${color}`,
+        boxShadow: mode === 'dark' ? '0 4px 20px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.05)',
+        background: mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#fff',
+        borderTop: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : 'none',
+        borderRight: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : 'none',
+        borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : 'none',
         overflow: 'hidden',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
         '&:hover': {
-          transform: 'translateY(-4px)',
-          boxShadow: '0 12px 40px rgba(99, 102, 241, 0.2)',
+          transform: 'translateY(-2px)',
+          boxShadow: mode === 'dark' ? '0 6px 24px rgba(0,0,0,0.5)' : '0 6px 16px rgba(0,0,0,0.08)',
           transition: 'all 0.3s ease',
         },
       }}
     >
-      <Box
-        sx={{
-          background: gradient,
-          p: { xs: 1.5, sm: 2, md: 3 },
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-        }}
-      >
-        <Typography 
-          variant="h6" 
-          sx={{ 
-            color: '#fff', 
-            fontWeight: 600,
-            fontSize: { xs: '0.75rem', sm: '0.95rem', md: '1.1rem' }
-          }}
-        >
-          {title}
-        </Typography>
-        <Box
-          sx={{
-            width: { xs: 32, sm: 40, md: 48 },
-            height: { xs: 32, sm: 40, md: 48 },
-            borderRadius: 2,
-            background: 'rgba(255, 255, 255, 0.2)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {React.cloneElement(icon, { sx: { color: '#fff', fontSize: { xs: 18, sm: 22, md: 28 } } })}
+      <CardContent sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              color: 'text.secondary',
+              fontWeight: 600,
+              fontSize: { xs: '0.75rem', sm: '0.85rem', md: '0.9rem' }
+            }}
+          >
+            {title}
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+            {React.cloneElement(icon, { sx: { color: color, fontSize: { xs: 20, sm: 24 } } })}
+          </Box>
         </Box>
-      </Box>
-      <CardContent sx={{ pt: { xs: 1.5, sm: 2, md: 3 }, pb: { xs: 1.5, sm: 2, md: 3 } }}>
         <Typography
-          variant="h4"
+          variant="h5"
           sx={{
             fontWeight: 700,
-            color: color,
+            color: 'text.primary',
             mb: 0.5,
-            fontSize: { xs: '1rem', sm: '1.25rem', md: '1.75rem' },
+            fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.45rem' },
           }}
         >
           {value}
@@ -176,8 +116,8 @@ const Dashboard = () => {
             sx={{
               color: 'text.secondary',
               fontWeight: 500,
-              fontSize: { xs: '0.65rem', sm: '0.7rem', md: '0.8rem' },
-              lineHeight: 1.2,
+              fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.80rem' },
+              mt: 0.5,
             }}
           >
             {subtitle}
@@ -189,7 +129,7 @@ const Dashboard = () => {
 
   return (
     <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 }, py: { xs: 1, md: 1 } }}>
-      <Box sx={{ mb: { xs: 1, md: 1 } }}>
+      <Box sx={{ mb: { xs: 2, md: 3 } }}>
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 1, mb: 1 }}>
           <Typography
             variant="h4"
@@ -218,72 +158,92 @@ const Dashboard = () => {
         </Typography>
       </Box>
 
-      <Grid container spacing={{ xs: 1.5, sm: 3 }}>
-        <Grid item xs={6} sm={6} md={3} lg={3}>
-          <MetricCard
-            title="Incoming"
-            value={`Invoices: ${dashboardData.incoming.totalInvoices}`}
-            subtitle={`Fine: ${dashboardData.incoming.totalFine}g | Paggas: ${dashboardData.incoming.totalPuggas}`}
-            icon={<IncomingIcon />}
-            color="#10b981"
-            gradient={gradients.successDark}
-          />
-        </Grid>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
+          <Typography variant="body1" sx={{ color: 'text.secondary' }}>Loading dashboard analytics...</Typography>
+        </Box>
+      ) : (
+        <Grid container spacing={{ xs: 1.5, sm: 3 }}>
+          {/* Row 1: Today's Transactions */}
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Kachi Transactions (Today)"
+              value={`Buy: ${dashboardData.kachi.purchaseFine.toFixed(1)}g / Sell: ${dashboardData.kachi.sellFine.toFixed(1)}g`}
+              icon={<PurchaseIcon />}
+              color="#4f46e5"
+            />
+          </Grid>
 
-        <Grid item xs={6} sm={6} md={3} lg={3}>
-          <MetricCard
-            title="Sales"
-            value={`Invoices: ${dashboardData.sales.totalInvoices}`}
-            subtitle={`Fine: ${dashboardData.sales.totalFine}g | Paggas: ${dashboardData.sales.totalPuggas}`}
-            icon={<SalesIcon />}
-            color="#ef4444"
-            gradient={gradients.danger}
-          />
-        </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Metal Exchange (Today)"
+              value={`Kachi Recv: ${dashboardData.exchange.kachiFine.toFixed(1)}g`}
+              subtitle={`Badla Wt: ${dashboardData.exchange.badlaWeight.toFixed(1)}g | Silver Given: ${dashboardData.exchange.givenSilver.toFixed(1)}g`}
+              icon={<SwapHorizIcon />}
+              color="#10b981"
+            />
+          </Grid>
 
-        <Grid item xs={6} sm={6} md={3} lg={3}>
-          <MetricCard
-            title="Stock"
-            value={`Paggas: ${dashboardData.stock.totalPuggas}`}
-            subtitle={`Fine: ${dashboardData.stock.totalFine}g | Bal: ${dashboardData.stock.balanceFine}g`}
-            icon={<PurchaseIcon />}
-            color="#6366f1"
-            gradient={gradients.primaryDark}
-          />
-        </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Chorsa 999 (Today)"
+              value={`Buy: ${dashboardData.chorsa.buyWeight.toFixed(1)}g / Sell: ${dashboardData.chorsa.sellWeight.toFixed(1)}g`}
+              icon={<ChorsaIcon />}
+              color="#f59e0b"
+            />
+          </Grid>
 
-        <Grid item xs={6} sm={6} md={3} lg={3}>
-          <MetricCard
-            title="Dukan Stock"
-            value={`Paggas: ${dashboardData.dukanStock.totalPuggas}`}
-            subtitle={`Fine: ${dashboardData.dukanStock.totalFine}g`}
-            icon={<DukanStockIcon />}
-            color="#8b5cf6"
-            gradient={gradients.purple}
-          />
-        </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Bank 9999 (Today)"
+              value={`Buy: ${dashboardData.bank.buyWeight.toFixed(1)}g / Sell: ${dashboardData.bank.sellWeight.toFixed(1)}g`}
+              icon={<BankIcon />}
+              color="#ec4899"
+            />
+          </Grid>
 
-        <Grid item xs={6} sm={6} md={3} lg={3}>
-          <MetricCard
-            title="Total Pending Sauda"
-            value={metrics.totalPendingSauda}
-            icon={<PendingIcon />}
-            color="#f59e0b"
-            gradient={gradients.warning}
-          />
-        </Grid>
+          {/* Row 2: Stocks & Cash in Hand (with yesterday's comparison) */}
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Kachi Stock"
+              value={`${dashboardData.kachiStock.todayFine.toFixed(1)}g`}
+              subtitle={`Paggas: ${dashboardData.kachiStock.todayPuggas} (Yesterday: ${dashboardData.kachiStock.yesterdayFine.toFixed(1)}g)`}
+              icon={<PurchaseIcon />}
+              color="#6366f1"
+            />
+          </Grid>
 
-        <Grid item xs={6} sm={6} md={3} lg={3}>
-          <MetricCard
-            title="Case in Hand"
-            value={`\u20B9${Math.trunc(dashboardData.cashInHand.balanceAmount || 0).toLocaleString('en-IN')}`}
-            // subtitle={`Bal Fine: ${Math.trunc(dashboardData.cashInHand.balanceFine || 0).toLocaleString('en-IN')}g`}
-            icon={<CaseInHandIcon />}
-            color={(dashboardData.cashInHand.balanceAmount || 0) >= 0 ? '#0891b2' : '#ef4444'}
-            gradient={(dashboardData.cashInHand.balanceAmount || 0) >= 0 ? 'linear-gradient(135deg, #0891b2 0%, #06b6d4 100%)' : gradients.danger}
-          />
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Cash in Hand"
+              value={`₹${Math.trunc(dashboardData.cashInHand.today).toLocaleString('en-IN')}`}
+              subtitle={`Yesterday: ₹${Math.trunc(dashboardData.cashInHand.yesterday).toLocaleString('en-IN')}`}
+              icon={<CaseInHandIcon />}
+              color={dashboardData.cashInHand.today >= 0 ? '#0891b2' : '#ef4444'}
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Chorsa 999 Stock"
+              value={`${dashboardData.chorsa.stockToday.toLocaleString('en-IN')}g`}
+              subtitle={`Yesterday: ${dashboardData.chorsa.stockYesterday.toLocaleString('en-IN')}g`}
+              icon={<ChorsaIcon />}
+              color="#f59e0b"
+            />
+          </Grid>
+
+          <Grid item xs={12} sm={6} md={3}>
+            <MetricCard
+              title="Bank 9999 Stock"
+              value={`${dashboardData.bank.stockToday.toLocaleString('en-IN')}g`}
+              subtitle={`Yesterday: ${dashboardData.bank.stockYesterday.toLocaleString('en-IN')}g`}
+              icon={<BankIcon />}
+              color="#ec4899"
+            />
+          </Grid>
         </Grid>
-      </Grid>
+      )}
     </Container>
   );
 };

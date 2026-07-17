@@ -107,6 +107,7 @@ const PartyLedger = () => {
 
   const handlePrint = async () => {
     const toastId = toast.loading('Printing ledger...');
+    console.log(summary)
     try {
       await printPartyLedger(party, entries, summary, pendingSaudas, startDate, endDate);
       toast.dismiss(toastId);

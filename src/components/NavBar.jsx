@@ -39,6 +39,7 @@ import {
   Business as BusinessIcon,
   FactCheck as FactCheckIcon,
   SwapHoriz as SwapHorizIcon,
+  SyncAlt as SyncAltIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -57,8 +58,16 @@ const menuItems = [
   { text: 'Credit/Debit Note', icon: <NoteAddIcon />, path: '/credit-debit-note' },
   { text: 'Stock Verification', icon: <FactCheckIcon />, path: '/stock-verification' },
   { text: 'Metal Palta', icon: <SwapHorizIcon />, path: '/metal-palta' },
-  // { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
-  // { text: 'Sauda Check', icon: <SettingsIcon />, path: '/sauda-check' },
+];
+
+const kachiDeliveryMenuItems = [
+  { text: 'Purchase Invoice', icon: <ReceiptIcon />, path: '/invoice' },
+  { text: 'Sales Invoice', icon: <ShoppingCartIcon />, path: '/sales-invoice' },
+];
+
+const pakkiDeliveryMenuItems = [
+  { text: 'Chorsa 999 Delivery', icon: <SyncAltIcon />, path: '/pakki-999/chorsa' },
+  { text: 'Bank 9999 Delivery', icon: <SyncAltIcon />, path: '/pakki-999/bank' },
 ];
 
 const deliveryMenuItems = [
@@ -68,12 +77,14 @@ const deliveryMenuItems = [
 
 const reportsMenuItems = [
   { text: 'Party Ledger', icon: <BookIcon />, path: '/party-ledger' },
+  { text: 'Kachi/Exchange Reports', icon: <ReportsIcon />, path: '/reports' },
 ];
 
 const NavBar = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [reportsOpen, setReportsOpen] = useState(false);
-  const [deliveryOpen, setDeliveryOpen] = useState(false);
+  const [kachiDeliveryOpen, setKachiDeliveryOpen] = useState(false);
+  const [pakkiDeliveryOpen, setPakkiDeliveryOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
@@ -139,9 +150,10 @@ const NavBar = ({ children }) => {
             </ListItemButton>
           </ListItem>
         ))}
+        {/* Kachi Delivery Dropdown */}
         <ListItem disablePadding>
           <ListItemButton
-            onClick={() => setDeliveryOpen(!deliveryOpen)}
+            onClick={() => setKachiDeliveryOpen(!kachiDeliveryOpen)}
             sx={{
               '&:hover': {
                 background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
@@ -157,13 +169,71 @@ const NavBar = ({ children }) => {
             <ListItemIcon sx={{ color: mc.iconColor }}>
               <LocalShippingIcon />
             </ListItemIcon>
-            <ListItemText primary="Delivery" sx={{ color: mc.text.listItem, fontWeight: 500 }} />
-            {deliveryOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            <ListItemText primary="Kachi Delivery" sx={{ color: mc.text.listItem, fontWeight: 500 }} />
+            {kachiDeliveryOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
           </ListItemButton>
         </ListItem>
-        <Collapse in={deliveryOpen} timeout="auto" unmountOnExit>
+        <Collapse in={kachiDeliveryOpen} timeout="auto" unmountOnExit>
           <List component="div" disablePadding>
-            {deliveryMenuItems.map((item) => (
+            {kachiDeliveryMenuItems.map((item) => (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton
+                  onClick={() => handleNavigation(item.path)}
+                  selected={location.pathname === item.path}
+                  sx={{
+                    '&.Mui-selected': {
+                      background: mode === 'dark' ? 'rgba(99, 102, 241, 0.15)' : gradients.primary,
+                      backdropFilter: mode === 'dark' ? 'blur(8px)' : 'none',
+                      '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                        color: mode === 'dark' ? '#818cf8' : '#fff',
+                      },
+                    },
+                    '&:hover': {
+                      background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
+                      '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                        color: mode === 'dark' ? '#818cf8' : '#fff',
+                      },
+                    },
+                    pl: 4,
+                    mx: 1,
+                    borderRadius: 2,
+                    mb: 1,
+                  }}
+                >
+                  <ListItemIcon sx={{ color: mc.iconColor }}>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} sx={{ color: mc.text.listItem, fontWeight: 500 }} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Collapse>
+
+        {/* Pakki Delivery Dropdown */}
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={() => setPakkiDeliveryOpen(!pakkiDeliveryOpen)}
+            sx={{
+              '&:hover': {
+                background: mode === 'dark' ? 'rgba(99, 102, 241, 0.08)' : gradients.primaryLight,
+                '& .MuiListItemIcon-root, & .MuiListItemText-root': {
+                  color: mode === 'dark' ? '#818cf8' : '#fff',
+                },
+              },
+              mx: 1,
+              borderRadius: 2,
+              mb: 1,
+            }}
+          >
+            <ListItemIcon sx={{ color: mc.iconColor }}>
+              <LocalShippingIcon />
+            </ListItemIcon>
+            <ListItemText primary="Pakki Delivery" sx={{ color: mc.text.listItem, fontWeight: 500 }} />
+            {pakkiDeliveryOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </ListItemButton>
+        </ListItem>
+        <Collapse in={pakkiDeliveryOpen} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            {pakkiDeliveryMenuItems.map((item) => (
               <ListItem key={item.text} disablePadding>
                 <ListItemButton
                   onClick={() => handleNavigation(item.path)}
@@ -307,8 +377,9 @@ const NavBar = ({ children }) => {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            BR Bullion Management
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>BR Bullion Management</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>BR Bullion</Box>
           </Typography>
           <IconButton
             color="inherit"

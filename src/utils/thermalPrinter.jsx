@@ -110,12 +110,15 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
     return 0;
   };
 
+
+  console.log(summary)
+
   let totalDebit = 0;
   let totalCredit = 0;
-  const openingBalance = Math.trunc(summary?.openingBalance || 0);
+  const openingBalance = Math.trunc(party?.openingBalance || 0);
   const openingDebit = openingBalance > 0 ? openingBalance : 0;
   const openingCredit = openingBalance < 0 ? Math.abs(openingBalance) : 0;
-  let runningBal = openingDebit - openingCredit;
+  let runningBal =  openingDebit - openingCredit;
 
   htmlContent += `
     <html>
@@ -539,6 +542,7 @@ export function printCashBook(cashBook) {
   const totalIncoming = cashBook?.incoming?.total || 0;
   const totalOutgoing = cashBook?.outgoing?.total || 0;
   const balance = cashBook?.balance || 0;
+  const cashInHand = cashBook?.cashInHand || 0;
 
   const allTransactions = [];
   incomingPayments.forEach((payment) => {
@@ -659,6 +663,10 @@ export function printCashBook(cashBook) {
           <tr>
             <td><strong>Closing Balance:</strong></td>
             <td class="num">&#8377;${Math.trunc(balance)}</td>
+          </tr>
+          <tr>
+            <td><strong>Cash In Hand:</strong></td>
+            <td class="num">&#8377;${Math.trunc(cashInHand)}</td>
           </tr>
         </table>
       </div>
