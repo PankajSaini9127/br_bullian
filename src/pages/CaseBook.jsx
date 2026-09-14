@@ -51,11 +51,40 @@ const CaseBook = () => {
   const [amount, setAmount] = useState('');
   const [remark, setRemark] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pendingInvoices, setPendingInvoices] = useState({ salesInvoices: [], purchaseInvoices: [] });
+  const [allocations, setAllocations] = useState({});
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
 
   useEffect(() => {
     fetchCashBook();
     fetchParties();
   }, []);
+
+  useEffect(() => {
+    if (!selectedParty) {
+      console.log('No selected party, resetting pendingInvoices');
+      setPendingInvoices({ salesInvoices: [], purchaseInvoices: [] });
+      setAllocations({});
+      return;
+    }
+    
+    const fetchPending = async () => {
+      setLoadingInvoices(true);
+      try {
+        const partyId = selectedParty._id || selectedParty.id;
+        console.log('Fetching pending invoices for partyId:', partyId, 'name:', selectedParty.partyName);
+        const data = await caseService.getPendingInvoices(partyId);
+        console.log('Fetched pending invoices data:', data);
+        setPendingInvoices(data || { salesInvoices: [], purchaseInvoices: [] });
+      } catch (error) {
+        console.error('Error fetching pending invoices:', error);
+      } finally {
+        setLoadingInvoices(false);
+      }
+    };
+    
+    fetchPending();
+  }, [selectedParty]);
 
   const fetchCashBook = async () => {
     setLoading(true);
@@ -85,7 +114,7 @@ const CaseBook = () => {
   const fetchParties = async () => {
     try {
       const response = await partyService.getParties();
-      setParties(response?.data?.parties || []);
+      setParties(response?.parties || []);
     } catch (error) {
       console.error('Error fetching parties:', error);
     }
@@ -118,6 +147,8 @@ const CaseBook = () => {
     setAmount('');
     setRemark('');
     setPaymentDate('');
+    setPendingInvoices({ salesInvoices: [], purchaseInvoices: [] });
+    setAllocations({});
   };
 
   const handleSavePayment = async () => {
@@ -125,21 +156,41 @@ const CaseBook = () => {
       toast.error('Please fill all required fields');
       return;
     }
+
+    const numAmount = parseFloat(amount);
+    
+    // Format allocations
+    const allocationArray = Object.keys(allocations)
+      .map(invoiceId => ({
+        invoiceId,
+        invoiceType: addPaymentType === 'incoming' ? 'SalesInvoice' : 'Invoice',
+        amount: parseFloat(allocations[invoiceId])
+      }))
+      .filter(a => a.amount > 0);
+
+    const totalAllocated = allocationArray.reduce((sum, a) => sum + a.amount, 0);
+
+    if (totalAllocated > numAmount) {
+      toast.error(`Total allocated amount (₹${totalAllocated}) cannot exceed payment amount (₹${numAmount})`);
+      return;
+    }
+
     setSaving(true);
     try {
       await caseService.createPayment({
         paymentType: addPaymentType,
         paymentDate,
-        amount: parseFloat(amount),
+        amount: numAmount,
         remark,
         partyId: selectedParty._id || selectedParty.id,
+        allocations: allocationArray
       });
       toast.success(`${addPaymentType === 'incoming' ? 'Incoming' : 'Outgoing'} payment added successfully`);
       handleCloseAddModal();
       fetchCashBook();
     } catch (error) {
       console.error('Error adding payment:', error);
-      toast.error('Failed to add payment');
+      toast.error(error.response?.data?.message || 'Failed to add payment');
     } finally {
       setSaving(false);
     }
@@ -416,6 +467,78 @@ const CaseBook = () => {
               onChange={(e) => setAmount(e.target.value)}
               required
             />
+            {selectedParty && (
+              <Box sx={{ mt: 1, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+                  Allocate to Pending Invoices
+                </Typography>
+                {loadingInvoices ? (
+                  <Typography variant="body2" color="textSecondary">Loading invoices...</Typography>
+                ) : (
+                  (() => {
+                    const invoicesList = addPaymentType === 'incoming' 
+                      ? pendingInvoices.salesInvoices 
+                      : pendingInvoices.purchaseInvoices;
+                    
+                    if (!invoicesList || invoicesList.length === 0) {
+                      return <Typography variant="body2" color="textSecondary">No pending invoices found. Payment will be treated as Advance.</Typography>;
+                    }
+
+                    return (
+                      <Stack spacing={1.5} sx={{ maxHeight: 180, overflowY: 'auto', pr: 1 }}>
+                        {invoicesList.map(inv => {
+                          const billNo = inv.salesInvoiceNo || inv.invoiceNo || 'N/A';
+                          const pending = (inv.totalAmount || 0) - (inv.paidAmount || 0);
+                          const allocVal = allocations[inv._id] || '';
+
+                          return (
+                            <Box key={inv._id} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>{billNo}</Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                  {new Date(inv.invoiceDate).toLocaleDateString('en-GB')} | Pending: ₹{pending.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    setAllocations({
+                                      ...allocations,
+                                      [inv._id]: pending.toFixed(2)
+                                    });
+                                  }}
+                                  sx={{ py: 0.25, px: 1, minWidth: 'auto', fontSize: '0.7rem' }}
+                                >
+                                  Pay Full
+                                </Button>
+                                <TextField
+                                  size="small"
+                                  label="Alloc Amount"
+                                  type="number"
+                                  value={allocVal}
+                                  onChange={(e) => {
+                                    setAllocations({
+                                      ...allocations,
+                                      [inv._id]: e.target.value
+                                    });
+                                  }}
+                                  style={{ width: 110 }}
+                                  InputProps={{
+                                    inputProps: { min: 0, max: pending, step: 0.01 }
+                                  }}
+                                />
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                    );
+                  })()
+                )}
+              </Box>
+            )}
             <TextField
               label="Remark"
               value={remark}

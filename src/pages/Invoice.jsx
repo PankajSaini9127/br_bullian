@@ -96,6 +96,8 @@ const Invoice = () => {
   const [editInvoiceDate, setEditInvoiceDate] = useState('');
   const [editInvoiceNo, setEditInvoiceNo] = useState('');
   const [editCurrentPagga, setEditCurrentPagga] = useState([]);
+  const [editPartySearchQuery, setEditPartySearchQuery] = useState('');
+  const [editPartySearchResults, setEditPartySearchResults] = useState([]);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterPartyId, setFilterPartyId] = useState('');
@@ -193,6 +195,23 @@ const Invoice = () => {
 
     return () => clearTimeout(debounceTimer);
   }, [partySearchQuery, parties]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(async () => {
+      if (editPartySearchQuery) {
+        try {
+          const response = await partyService.searchParties(editPartySearchQuery);
+          setEditPartySearchResults(response?.data?.parties || []);
+        } catch (error) {
+          console.error('Error searching parties:', error);
+        }
+      } else {
+        setEditPartySearchResults(parties);
+      }
+    }, 1000);
+
+    return () => clearTimeout(debounceTimer);
+  }, [editPartySearchQuery, parties]);
 
   useEffect(() => {
     const updateItems = () => {
@@ -326,6 +345,8 @@ const Invoice = () => {
     setEditCurrentPagga([]);
     setEditPartyId('');
     setEditInvoiceDate('');
+    setEditPartySearchQuery('');
+    setEditPartySearchResults([]);
   };
 
   const handleUpdateInvoice = async () => {
@@ -704,7 +725,7 @@ const Invoice = () => {
 
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.text('BR BULLION', 40, 10, { align: 'center' });
+    doc.text('BR JEWELLERS', 40, 10, { align: 'center' });
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
@@ -1717,12 +1738,23 @@ const Invoice = () => {
               sx={{ minWidth: { md: '200px' } }}
               size="small"
               loading={false}
-              options={parties}
+              options={editPartySearchQuery ? editPartySearchResults : parties}
               getOptionLabel={(option) => option.partyName || ''}
               isOptionEqualToValue={(option, value) => option?._id === value?._id}
-              value={parties.find((p) => p._id === editPartyId) || null}
+              value={
+                editPartyId ? (
+                  (editPartySearchQuery ? editPartySearchResults : parties).find((p) => p._id === editPartyId) ||
+                  (editingInvoice?.partyId && (editingInvoice.partyId._id || editingInvoice.partyId) === editPartyId ? { _id: editPartyId, partyName: editingInvoice.partyId.partyName || '' } : null)
+                ) : null
+              }
               onChange={(e, newValue) => {
                 setEditPartyId(newValue?._id || '');
+                setEditPartySearchQuery('');
+              }}
+              onInputChange={(event, newInputValue, reason) => {
+                if (reason === 'input') {
+                  setEditPartySearchQuery(newInputValue);
+                }
               }}
               renderInput={(params) => (
                 <TextField

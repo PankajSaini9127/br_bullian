@@ -97,6 +97,50 @@ async function getCashBook(params = {}) {
   }
 }
 
+// Get outstanding receivables/payables
+async function getOutstandingPayments() {
+  try {
+    const response = await apiInstance.get('/payments/outstanding');
+    return response?.data?.data;
+  } catch (error) {
+    console.error('Error fetching outstanding payments:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// Get pending invoices for party
+async function getPendingInvoices(partyId) {
+  try {
+    const response = await apiInstance.get(`/payments/pending-invoices/${partyId}`);
+    return response?.data?.data;
+  } catch (error) {
+    console.error('Error fetching pending invoices:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// Get advances for party
+async function getAdvances(partyId) {
+  try {
+    const response = await apiInstance.get(`/payments/advances/${partyId}`);
+    return response?.data?.data;
+  } catch (error) {
+    console.error('Error fetching advances:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
+// Settle advance
+async function settleAdvance(settleData) {
+  try {
+    const response = await apiInstance.post('/payments/settle-advance', settleData);
+    return response.data;
+  } catch (error) {
+    console.error('Error settling advance:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 // Show the BR logo loader while requests are in flight
 attachLoaderInterceptors(apiInstance);
 
@@ -107,4 +151,8 @@ export default {
   deletePayment,
   getPaymentById,
   getCashBook,
+  getOutstandingPayments,
+  getPendingInvoices,
+  getAdvances,
+  settleAdvance,
 };

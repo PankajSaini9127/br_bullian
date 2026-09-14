@@ -1912,7 +1912,12 @@ const SalesInvoice = () => {
                 options={editPartySearchQuery ? editPartySearchResults : parties}
                 getOptionLabel={(option) => option.partyName || ''}
                 isOptionEqualToValue={(option, value) => option?._id === value?._id}
-                value={parties.find((p) => p._id === editPartyId) || null}
+                value={
+                  editPartyId ? (
+                    (editPartySearchQuery ? editPartySearchResults : parties).find((p) => p._id === editPartyId) ||
+                    (editingInvoice?.partyId && (editingInvoice.partyId._id || editingInvoice.partyId) === editPartyId ? { _id: editPartyId, partyName: editingInvoice.partyId.partyName || '' } : null)
+                  ) : null
+                }
                 onChange={(e, newValue) => {
                   setEditPartyId(newValue?._id || '');
                   setEditPartySearchQuery('');

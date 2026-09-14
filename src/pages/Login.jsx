@@ -119,7 +119,7 @@ const Login = () => {
               Sign In
             </Typography>
             <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', fontWeight: 500 }}>
-              Welcome to BR Bullion
+              Welcome to BR Jewellers
             </Typography>
 
             {error && (
@@ -244,7 +244,7 @@ const Login = () => {
           <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: { xs: 2, sm: 3 } }}>
             {'Copyright © '}
             <Link color="inherit" href="#">
-              BR Bullion
+              BR Jewellers
             </Link>{' '}
             {new Date().getFullYear()}
             {'.'}

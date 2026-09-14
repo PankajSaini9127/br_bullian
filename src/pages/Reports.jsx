@@ -33,6 +33,7 @@ import jsPDF from 'jspdf';
 import reportService from '../services/reportService';
 import partyService from '../services/partyService';
 import pakkiService from '../services/pakkiService';
+import salesInvoiceService from '../services/salesInvoiceService';
 import { gradients } from '../theme';
 import { useThemeMode } from '../context/ThemeContext';
 import { roundOffFineFormatted } from '../utils/roundOff';
@@ -45,6 +46,8 @@ const Reports = () => {
   const [parties, setParties] = useState([]);
   const [selectedParty, setSelectedParty] = useState(null);
   const [currentChorsaStock, setCurrentChorsaStock] = useState(0);
+  const [currentKachiStock, setCurrentKachiStock] = useState(0);
+  const [currentKachiPuggas, setCurrentKachiPuggas] = useState(0);
   
   // Single Date Filter - Defaults to Today
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -55,20 +58,25 @@ const Reports = () => {
 
   useEffect(() => {
     fetchParties();
-    fetchChorsaStock();
   }, []);
 
-  const fetchChorsaStock = async () => {
+  const fetchStocks = async () => {
     try {
       const stock = await pakkiService.getPakkiStock(reportDate);
       setCurrentChorsaStock(stock?.chorsaStock || 0);
+
+      const dashboardRes = await salesInvoiceService.getDashboard({ date: reportDate });
+      const dashData = dashboardRes?.data?.data || dashboardRes?.data || {};
+      setCurrentKachiStock(dashData.kachiStock?.todayFine || 0);
+      setCurrentKachiPuggas(dashData.kachiStock?.todayPuggas || 0);
     } catch (error) {
-      console.error('Error fetching chorsa stock:', error);
+      console.error('Error fetching stocks:', error);
     }
   };
 
   useEffect(() => {
     fetchReport();
+    fetchStocks();
   }, [reportDate, selectedParty]);
 
   const fetchParties = async () => {
@@ -166,7 +174,7 @@ const Reports = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('BR BULLION', 15, 10);
+    doc.text('BR JEWELLERS', 15, 10);
     doc.setFontSize(10);
     doc.text('Daily Transaction Summary Report (Grouped by Party)', 15, 17);
 
@@ -222,7 +230,7 @@ const Reports = () => {
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('BR BULLION - Transaction Report Summary', 15, 10);
+        doc.text('BR JEWELLERS - Transaction Report Summary', 15, 10);
         
         yPosition = 25;
         doc.setFillColor(243, 244, 246);
@@ -292,22 +300,40 @@ const Reports = () => {
     doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
     doc.text('Chorsa 999 (Pakki) Daily Stock Summary:', 15, yPosition);
+    
+    // Add Kachi Stock Info column position
+    const kachiColPos = 140;
+    doc.text('Kachi Daily Stock Summary:', kachiColPos, yPosition);
     yPosition += 6;
+    
     doc.setFont('helvetica', 'normal');
     
     const impact = totalChorsaBuy - totalChorsaSell - totalExchangeGiven;
     const openingStock = currentChorsaStock - impact;
     
+    const kachiImpact = totalKachiBuy - totalKachiSell + totalExchangeKachi;
+    const kachiOpeningStock = currentKachiStock - kachiImpact;
+
     const openingStr = `Opening Stock (kal ka bacha hua): ${roundOffFineFormatted(openingStock)}g`;
     const impactStr = `Today's Impact (Buy - Sell - Silver Given): ${impact > 0 ? '+' : ''}${roundOffFineFormatted(impact)}g`;
     const stockStr = `Total Closing Stock Available: ${roundOffFineFormatted(currentChorsaStock)}g`;
     
+    const kachiOpeningStr = `Opening Stock (kal ka bacha hua): ${roundOffFineFormatted(kachiOpeningStock)}g`;
+    const kachiImpactStr = `Today's Impact (Buy - Sell + Exchange): ${kachiImpact > 0 ? '+' : ''}${roundOffFineFormatted(kachiImpact)}g`;
+    const kachiStockStr = `Total Closing Stock Available: ${roundOffFineFormatted(currentKachiStock)}g (${currentKachiPuggas} Paggas)`;
+
     doc.text(openingStr, 20, yPosition);
+    doc.text(kachiOpeningStr, kachiColPos + 5, yPosition);
     yPosition += 6;
+    
     doc.text(impactStr, 20, yPosition);
+    doc.text(kachiImpactStr, kachiColPos + 5, yPosition);
     yPosition += 6;
+    
     doc.setFont('helvetica', 'bold');
     doc.text(stockStr, 20, yPosition);
+    doc.text(kachiStockStr, kachiColPos + 5, yPosition);
+    yPosition += 10;
 
     doc.autoPrint();
     const pdfBlob = doc.output('blob');
@@ -440,18 +466,29 @@ const Reports = () => {
       <Grid container spacing={3} sx={{ mb: 4 }}>
         {/* Kachi card */}
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, borderLeft: '6px solid #4f46e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          <Card sx={{ borderRadius: 3, borderLeft: '6px solid #4f46e5', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', position: 'relative' }}>
             <CardContent sx={{ p: 2.5 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Kachi (Invoices)</Typography>
                 <ShoppingCartIcon sx={{ color: '#4f46e5', opacity: 0.8 }} />
               </Box>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary' }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#10b981' }}>
                 Buy: {roundOffFineFormatted(totalKachiBuy)}g
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#ef4444', mt: 0.5 }}>
                 Sell: {roundOffFineFormatted(totalKachiSell)}g
               </Typography>
+              <Box sx={{ mt: 1, pt: 1, borderTop: '1px dashed #e5e7eb' }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                  Opening Stock: {roundOffFineFormatted(currentKachiStock - (totalKachiBuy - totalKachiSell + totalExchangeKachi))}g
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: (totalKachiBuy - totalKachiSell + totalExchangeKachi) >= 0 ? '#10b981' : '#ef4444' }}>
+                  Today's Impact: {(totalKachiBuy - totalKachiSell + totalExchangeKachi) > 0 ? '+' : ''}{roundOffFineFormatted(totalKachiBuy - totalKachiSell + totalExchangeKachi)}g
+                </Typography>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#4f46e5', mt: 0.5 }}>
+                  Closing Stock: {roundOffFineFormatted(currentKachiStock)}g <Typography component="span" variant="body2" sx={{ fontWeight: 600, color: 'text.secondary' }}>({currentKachiPuggas} Paggas)</Typography>
+                </Typography>
+              </Box>
             </CardContent>
           </Card>
         </Grid>

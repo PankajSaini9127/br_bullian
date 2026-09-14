@@ -114,7 +114,7 @@ const SaudaDetails = () => {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
 
-    doc.text('BR BULLION', 40, 10, {
+    doc.text('BR JEWELLERS', 40, 10, {
       align: 'center',
     });
 

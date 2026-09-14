@@ -731,7 +731,7 @@ export async function printInvoiceThermal(invoice) {
       </style>
     </head>
     <body>
-      <h1>BR BULLION - ${isReturn ? 'Purchase Return' : 'Purchase Invoice'}</h1>
+      <h1>BR JEWELLERS - ${isReturn ? 'Purchase Return' : 'Purchase Invoice'}</h1>
       <div class="header">
         <p><strong>Party:</strong> ${partyName}</p>
         <p><strong>Date:</strong> ${invDate}</p>
@@ -1085,7 +1085,7 @@ export async function printInvoiceBluetooth(invoice) {
       </style>
     </head>
     <body>
-      <h1>BR BULLION - ${isReturn ? 'Purchase Return' : 'Purchase Invoice'}</h1>
+      <h1>BR JEWELLERS - ${isReturn ? 'Purchase Return' : 'Purchase Invoice'}</h1>
       <div class="header">
         <p>Name: ${partyName}</p>
         <p>Date: ${invDate}</p>

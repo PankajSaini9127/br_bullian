@@ -40,6 +40,7 @@ import {
   FactCheck as FactCheckIcon,
   SwapHoriz as SwapHorizIcon,
   SyncAlt as SyncAltIcon,
+  AccountBalanceWallet as WalletIcon,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -51,6 +52,7 @@ const drawerWidth = 240;
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
   { text: 'Party List', icon: <PeopleIcon />, path: '/party-list' },
+  { text: 'Outstanding', icon: <WalletIcon />, path: '/outstanding' },
   { text: 'Sauda', icon: <TrendingUpIcon />, path: '/sauda' },
   { text: 'Pagga List', icon: <InventoryIcon />, path: '/pagga-list' },
   { text: 'Case Book', icon: <AccountBalanceIcon />, path: '/case-book' },
@@ -117,7 +119,7 @@ const NavBar = ({ children }) => {
     <div>
       <Toolbar sx={{ background: mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : gradients.primary, borderBottom: mode === 'dark' ? '1px solid rgba(255, 255, 255, 0.06)' : 'none' }}>
         <Typography variant="h6" noWrap component="div" sx={{ color: '#fff', fontWeight: 700 }}>
-          BR Bullion
+          BR Jewellers
         </Typography>
       </Toolbar>
       <List sx={{ mt: 2 }}>
@@ -378,8 +380,8 @@ const NavBar = ({ children }) => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, fontWeight: 600, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>BR Bullion Management</Box>
-            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>BR Bullion</Box>
+            <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>BR Jewellers Management</Box>
+            <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>BR Jewellers</Box>
           </Typography>
           <IconButton
             color="inherit"

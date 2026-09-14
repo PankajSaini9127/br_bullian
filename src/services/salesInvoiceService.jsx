@@ -101,9 +101,9 @@ async function createReturnInvoice(returnInvoiceData) {
 }
 
 // Get dashboard data
-async function getDashboard() {
+async function getDashboard(params = {}) {
   try {
-    const response = await apiInstance.get('/dashboard');
+    const response = await apiInstance.get('/dashboard', { params });
     console.log('Dashboard Data Retrieved:', response.data);
     return response.data;
   } catch (error) {

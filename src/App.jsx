@@ -28,6 +28,7 @@ const StockVerification = lazy(() => import('./pages/StockVerification'));
 const MetalPalta = lazy(() => import('./pages/MetalPalta'));
 const Pakki999 = lazy(() => import('./pages/Chorsa999'));
 const Reports = lazy(() => import('./pages/Reports'));
+const Outstanding = lazy(() => import('./pages/Outstanding'));
 
 function App() {
   const token = localStorage.getItem('token');
@@ -48,6 +49,7 @@ function App() {
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/party-list" element={<PartyList />} />
+                      <Route path="/outstanding" element={<Outstanding />} />
                       <Route path="/sauda" element={<Sauda />} />
                       <Route path="/invoice" element={<Invoice />} />
                       <Route path="/sales-invoice" element={<SalesInvoice />} />
