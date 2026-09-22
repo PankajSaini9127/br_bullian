@@ -38,6 +38,17 @@ async function getReportSummary(params = {}) {
 // Show loader
 attachLoaderInterceptors(apiInstance);
 
+async function getDailyStockReport(params = {}) {
+  try {
+    const response = await apiInstance.get('/reports/daily-stock', { params });
+    return response?.data?.data;
+  } catch (error) {
+    console.error('Error fetching daily stock report:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 export default {
   getReportSummary,
+  getDailyStockReport,
 };

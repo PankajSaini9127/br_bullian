@@ -9,6 +9,8 @@ import {
   Card,
   CardContent,
   TextField,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   ShoppingCart as PurchaseIcon,
@@ -17,8 +19,11 @@ import {
   AccountBalance as BankIcon,
   SyncAlt as ChorsaIcon,
   SwapHoriz as SwapHorizIcon,
+  Print as PrintIcon,
 } from '@mui/icons-material';
 import salesInvoiceService from '../services/salesInvoiceService';
+import paggaService from '../services/paggaService';
+import { printKachiStock } from '../utils/thermalPrinter';
 import { gradients } from '../theme';
 import { useThemeMode } from '../context/ThemeContext';
 
@@ -61,7 +66,28 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [selectedDate]);
 
-  const MetricCard = ({ title, value, icon, color, subtitle }) => (
+  const [printingKachi, setPrintingKachi] = useState(false);
+
+  const handlePrintKachiStock = async (e) => {
+    e?.stopPropagation();
+    try {
+      setPrintingKachi(true);
+      const stockData = await paggaService.getKachiStock({ date: selectedDate });
+      if (!stockData || !stockData.puggas || stockData.puggas.length === 0) {
+        toast.warn('No kachi stock records found to print');
+        return;
+      }
+      printKachiStock(stockData);
+      toast.success('Kachi stock report sent to print');
+    } catch (err) {
+      console.error('Error printing kachi stock:', err);
+      toast.error('Failed to print kachi stock');
+    } finally {
+      setPrintingKachi(false);
+    }
+  };
+
+  const MetricCard = ({ title, value, icon, color, subtitle, action }) => (
     <Card
       sx={{
         borderRadius: 3,
@@ -95,8 +121,11 @@ const Dashboard = () => {
           >
             {title}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
-            {React.cloneElement(icon, { sx: { color: color, fontSize: { xs: 20, sm: 24 } } })}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {action}
+            <Box sx={{ display: 'flex', alignItems: 'center', opacity: 0.8 }}>
+              {React.cloneElement(icon, { sx: { color: color, fontSize: { xs: 20, sm: 24 } } })}
+            </Box>
           </Box>
         </Box>
         <Typography
@@ -210,6 +239,27 @@ const Dashboard = () => {
               subtitle={`Paggas: ${dashboardData.kachiStock.todayPuggas} (Yesterday: ${dashboardData.kachiStock.yesterdayFine.toFixed(1)}g)`}
               icon={<PurchaseIcon />}
               color="#6366f1"
+              action={
+                <Tooltip title="Print Kachi Stock & Paggas">
+                  <span>
+                    <IconButton
+                      size="small"
+                      onClick={handlePrintKachiStock}
+                      disabled={printingKachi}
+                      sx={{
+                        color: '#6366f1',
+                        bgcolor: mode === 'dark' ? 'rgba(99,102,241,0.2)' : 'rgba(99,102,241,0.1)',
+                        '&:hover': {
+                          bgcolor: mode === 'dark' ? 'rgba(99,102,241,0.35)' : 'rgba(99,102,241,0.2)',
+                        },
+                        p: 0.6,
+                      }}
+                    >
+                      <PrintIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+              }
             />
           </Grid>
 

@@ -1180,3 +1180,121 @@ export async function printInvoiceBluetooth(invoice) {
 
   return true;
 }
+
+export function printKachiStock(stockData) {
+  const puggas = stockData?.puggas || [];
+  const totalPuggas = stockData?.totalPuggas ?? puggas.length;
+  const totalWeight = stockData?.totalWeight ?? puggas.reduce((sum, p) => sum + (Number(p.weight) || 0), 0);
+  const totalFine = stockData?.totalFine ?? puggas.reduce((sum, p) => sum + (Number(p.fine) || 0), 0);
+
+  let rowsHtml = '';
+  puggas.forEach((item, i) => {
+    const wt = parseFloat(item.weight) || 0;
+    const touch = parseFloat(item.touch) || 0;
+    const fine = item.fine ? parseFloat(item.fine) : (wt * touch / 100);
+    const dec = fine % 1;
+    const roundedFine = Math.floor(fine) + (dec < 0.45 ? 0 : dec < 0.9 ? 0.5 : 1);
+    const receivedFrom = item.boughtFrom || item.partyName || '-';
+
+    rowsHtml += `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${item.paggaNo || '-'}</td>
+        <td>${wt.toFixed(2)}</td>
+        <td>${touch.toFixed(2)}</td>
+        <td>${roundedFine.toFixed(2)}</td>
+        <td>${receivedFrom}</td>
+      </tr>
+    `;
+  });
+
+  const htmlContent = `
+    <html>
+    <head>
+      <title>Kachi Stock</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 8px; padding: 4px; line-height: 1.1; }
+        h1 { text-align: center; margin: 0 0 2px; font-size: 11px; }
+        p { margin: 1px 0; }
+        .header { margin-bottom: 3px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 3px; }
+        th, td { border: 1px solid #ddd; padding: 1px 2px; text-align: left; }
+        th { background-color: #f2f2f2; font-weight: bold; }
+        .section-title { font-weight: bold; margin-top: 4px; margin-bottom: 2px; }
+        .total-section { margin-top: 5px; }
+        .small-font { font-size: 7px; }
+        @media print {
+          body { padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>BR JEWELLERS - Kachi Stock</h1>
+      <div class="header">
+        <p><strong>Report:</strong> Kachi Stock (Available Paggas)</p>
+        <p><strong>Date:</strong> ${new Date().toLocaleDateString('en-GB')}</p>
+        <p><strong>Total Paggas in Stock:</strong> ${totalPuggas}</p>
+      </div>
+
+      <div class="section-title">KACHI STOCK ITEMS</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Sr</th>
+            <th>Pagga No</th>
+            <th>Weight(g)</th>
+            <th>Touch</th>
+            <th>Fine(g)</th>
+            <th>Received From</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml || '<tr><td colspan="6" style="text-align:center;">No kachi stock records found</td></tr>'}
+        </tbody>
+      </table>
+
+      <div class="section-title total-section">TOTAL</div>
+      <table>
+        <tbody>
+          <tr>
+            <td><strong>Total Paggas</strong></td>
+            <td>${totalPuggas} Pcs</td>
+          </tr>
+          <tr>
+            <td><strong>Total Weight</strong></td>
+            <td>${totalWeight.toFixed(2)}g</td>
+          </tr>
+          <tr>
+            <td><strong>Total Fine</strong></td>
+            <td>${totalFine.toFixed(2)}g</td>
+          </tr>
+        </tbody>
+      </table>
+      <p style="margin-top: 25px; color: #666;">Printed: ${new Date().toLocaleString('en-GB')}</p>
+    </body>
+    </html>
+  `;
+
+  const printFrame = document.createElement('iframe');
+  printFrame.style.position = 'absolute';
+  printFrame.style.top = '-9999px';
+  printFrame.style.left = '-9999px';
+  document.body.appendChild(printFrame);
+
+  const printDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+  printDoc.open();
+  printDoc.write(htmlContent);
+  printDoc.close();
+
+  printFrame.contentWindow.focus();
+  printFrame.contentWindow.print();
+
+  setTimeout(() => {
+    if (document.body.contains(printFrame)) {
+      document.body.removeChild(printFrame);
+    }
+  }, 1000);
+
+  return true;
+}
+

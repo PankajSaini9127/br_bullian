@@ -84,11 +84,22 @@ async function deletePagga(id) {
   }
 }
 
+async function getKachiStock(params = {}) {
+  try {
+    const response = await apiInstance.get('/puggas/kachi-stock', { params });
+    return response?.data?.data || response?.data || {};
+  } catch (error) {
+    console.error('Error Retrieving Kachi Stock:', error.response?.data || error.message);
+    throw error;
+  }
+}
+
 // Show the BR logo loader while requests are in flight
 attachLoaderInterceptors(apiInstance);
 
 export default {
   getPaggaList,
+  getKachiStock,
   getPaggaById,
   addPagga,
   updatePagga,
