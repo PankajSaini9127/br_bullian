@@ -112,6 +112,7 @@ const PaggaList = () => {
 
   // Filter in-stock puggas based on search query
   const filteredStockPuggas = kachiStockData.puggas.filter(p => {
+    if (p.isPurchaseReturn) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase().trim();
     const pNo = (p.paggaNo || '').toLowerCase();
@@ -444,7 +445,9 @@ const PaggaList = () => {
                         </TableCell>
                         <TableCell>{pagga.boughtFrom || '-'}</TableCell>
                         <TableCell>
-                          {pagga.soldTo ? (
+                          {pagga.isPurchaseReturn ? (
+                            <Chip label={`Returned (${pagga.purchaseReturnedTo || pagga.boughtFrom || 'Vendor'})`} size="small" color="error" sx={{ height: 20, fontSize: '0.7rem' }} />
+                          ) : pagga.soldTo ? (
                             <Chip label={pagga.soldTo} size="small" color="default" sx={{ height: 20, fontSize: '0.7rem' }} />
                           ) : (
                             <Chip label="Unsold (In Stock)" size="small" color="success" sx={{ height: 20, fontSize: '0.7rem' }} />

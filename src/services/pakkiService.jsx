@@ -35,9 +35,9 @@ async function createPakki(data) {
   }
 }
 
-async function getChorsaPakkiList() {
+async function getChorsaPakkiList(params = {}) {
   try {
-    const response = await apiInstance.get('/pakki-sale-purchase/chorsa');
+    const response = await apiInstance.get('/pakki-sale-purchase/chorsa', { params });
     return response?.data?.data || response?.data || [];
   } catch (error) {
     console.error('Error fetching chorsa pakki list:', error.response?.data || error.message);
@@ -45,9 +45,9 @@ async function getChorsaPakkiList() {
   }
 }
 
-async function getBankPakkiList() {
+async function getBankPakkiList(params = {}) {
   try {
-    const response = await apiInstance.get('/pakki-sale-purchase/bank');
+    const response = await apiInstance.get('/pakki-sale-purchase/bank', { params });
     return response?.data?.data || response?.data || [];
   } catch (error) {
     console.error('Error fetching bank pakki list:', error.response?.data || error.message);

@@ -1,4 +1,4 @@
-async function K(e,a,F,v,N,x){let s="";const i=t=>t?new Date(t).toLocaleDateString("en-GB"):"-",g=t=>{var S,z;return t.type==="payment"?t.paymentType==="incoming"?Math.trunc(t.amount||0):0:t.type==="Purchase"?t.amount?Math.trunc(t.amount):((S=t.saudaCuts)==null?void 0:S.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="debit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?((z=t.saudaCuts)==null?void 0:z.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="debit-note"?Math.trunc(t.amount||0):0},n=t=>{var S,z;return t.type==="payment"?t.paymentType==="outgoing"?Math.trunc(t.amount||0):0:t.type==="sales"?((S=t.saudaCuts)==null?void 0:S.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="credit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?0:t.type==="Purchase Return"?t.amount?Math.trunc(t.amount):((z=t.saudaCuts)==null?void 0:z.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="credit-note"?Math.trunc(t.amount||0):0};console.log(F);let l=0,u=0;const h=Math.trunc((e==null?void 0:e.openingBalance)||0),r=h>0?h:0,c=h<0?Math.abs(h):0;let m=r-c;s+=`
+async function K(e,a,F,v,N,x){let s="";const i=t=>t?new Date(t).toLocaleDateString("en-GB"):"-",g=t=>{var S,T;return t.type==="payment"?t.paymentType==="incoming"?Math.trunc(t.amount||0):0:t.type==="Purchase"?t.amount?Math.trunc(t.amount):((S=t.saudaCuts)==null?void 0:S.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="debit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?((T=t.saudaCuts)==null?void 0:T.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="debit-note"?Math.trunc(t.amount||0):0},n=t=>{var S,T;return t.type==="payment"?t.paymentType==="outgoing"?Math.trunc(t.amount||0):0:t.type==="sales"?((S=t.saudaCuts)==null?void 0:S.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="crosscut"?t.creditDebitType==="credit"?Math.trunc(t.totalProfitLoss||0):0:t.type==="sales-return"?0:t.type==="Purchase Return"?t.amount?Math.trunc(t.amount):((T=t.saudaCuts)==null?void 0:T.reduce((C,b)=>C+Math.trunc(b.cutFine*b.rate/1e3),0))||0:t.type==="credit-note"?Math.trunc(t.amount||0):0};console.log(F);let l=0,u=0;const h=Math.trunc((e==null?void 0:e.openingBalance)||0),r=h>0?h:0,c=h<0?Math.abs(h):0;let m=r-c;s+=`
     <html>
     <head>
       <title>Party Ledger</title>
@@ -57,7 +57,7 @@ async function K(e,a,F,v,N,x){let s="";const i=t=>t?new Date(t).toLocaleDateStri
             <td class="num">${c||""}</td>
             <td class="num bold">${m}</td>
           </tr>
-  `;const $=t=>t.type==="payment"?t.paymentType==="incoming"?"Payment":"Payment Outgoing":t.type==="Purchase"?"Purchase":t.type==="Purchase Return"?"Purchase Return":t.type==="sales"?"Sales Invoice":t.type==="sales-return"?"Sales Return":t.type==="crosscut"?"Cross Cut":t.type==="credit-note"?"Credit Note":t.type==="debit-note"?"Debit Note":"-";let y=null,w=null;a.forEach(t=>{var R,L,W;const S=i(t.date),z=g(t),C=n(t);l+=z,u+=C,m=Math.trunc(r+l-(c+u));let b=t.type;if(y!==null&&y!==b&&(s+=`
+  `;const $=t=>t.type==="payment"?t.paymentType==="incoming"?"Payment":"Payment Outgoing":t.type==="Purchase"?"Purchase":t.type==="Purchase Return"?"Purchase Return":t.type==="sales"?"Sales Invoice":t.type==="sales-return"?"Sales Return":t.type==="crosscut"?"Cross Cut":t.type==="credit-note"?"Credit Note":t.type==="debit-note"?"Debit Note":"-";let y=null,w=null;a.forEach(t=>{var R,L,W;const S=i(t.date),T=g(t),C=n(t);l+=T,u+=C,m=Math.trunc(r+l-(c+u));let b=t.type;if(y!==null&&y!==b&&(s+=`
           <tr>
             <td colspan="7" style="height: 8px; border-top: 2px solid #000; border-left: none; border-right: none; border-bottom: none;"></td>
           </tr>
@@ -65,27 +65,27 @@ async function K(e,a,F,v,N,x){let s="";const i=t=>t?new Date(t).toLocaleDateStri
           <tr>
             <td colspan="7" style="height: 8px; border-top: 2px solid #000; border-left: none; border-right: none; border-bottom: none;"></td>
           </tr>
-        `)}y=b,w=t.invoiceNo;let P="",T="-";if(t.type==="payment"?(P=(t.paymentType==="incoming"?"Payment In":"Payment Out")+(t.paymentNo?" - "+t.paymentNo:"")+(t.remark?" ("+t.remark+")":""),T="-"):t.type==="Purchase"?(P="Purchase"+(t.invoiceNo?" - "+t.invoiceNo:""),T=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="Purchase Return"?(P="Purchase Return"+(t.invoiceNo?" - "+t.invoiceNo:""),T=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales"?(P="Sales"+(t.invoiceNo?" - "+t.invoiceNo:""),T=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales-return"?(P="Sales Return"+(t.invoiceNo?" - "+t.invoiceNo:""),T=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="crosscut"?(P="Cross Cut: "+(t.targetSaudaNo||"-")+" ("+(t.targetSaudaType||"-")+")",T=((R=t.details)==null?void 0:R.reduce((f,d)=>f+(d.crosscutQuantity||0),0))+" g"):t.type==="credit-note"?(P="Credit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),T=t.fine?t.fine+" g":"-"):t.type==="debit-note"&&(P="Debit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),T=t.fine?t.fine+" g":"-"),s+=`
+        `)}y=b,w=t.invoiceNo;let D="",P="-";if(t.type==="payment"?(D=(t.paymentType==="incoming"?"Payment In":"Payment Out")+(t.paymentNo?" - "+t.paymentNo:"")+(t.remark?" ("+t.remark+")":""),P="-"):t.type==="Purchase"?(D="Purchase"+(t.invoiceNo?" - "+t.invoiceNo:""),P=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="Purchase Return"?(D="Purchase Return"+(t.invoiceNo?" - "+t.invoiceNo:""),P=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales"?(D="Sales"+(t.invoiceNo?" - "+t.invoiceNo:""),P=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="sales-return"?(D="Sales Return"+(t.invoiceNo?" - "+t.invoiceNo:""),P=t.totalFine?Math.trunc(t.totalFine)+" g":"-"):t.type==="crosscut"?(D="Cross Cut: "+(t.targetSaudaNo||"-")+" ("+(t.targetSaudaType||"-")+")",P=((R=t.details)==null?void 0:R.reduce((f,d)=>f+(d.crosscutQuantity||0),0))+" g"):t.type==="credit-note"?(D="Credit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),P=t.fine?t.fine+" g":"-"):t.type==="debit-note"&&(D="Debit Note"+(t.noteNo?" - "+t.noteNo:"")+(t.reason?" ("+t.reason+")":""),P=t.fine?t.fine+" g":"-"),s+=`
           <tr>
             <td class="center">${S}</td>
             <td>${$(t)}</td>
-            <td>${P}</td>
-            <td class="num">${T}</td>
-            <td class="num">${z||""}</td>
+            <td>${D}</td>
+            <td class="num">${P}</td>
+            <td class="num">${T||""}</td>
             <td class="num">${C||""}</td>
             <td class="num bold">${m}</td>
           </tr>
-    `,t.type==="crosscut"&&((L=t.details)==null?void 0:L.length)>0&&t.details.forEach(f=>{var d,D,I;s+=`
+    `,t.type==="crosscut"&&((L=t.details)==null?void 0:L.length)>0&&t.details.forEach(f=>{var d,z,I;s+=`
           <tr>
             <td colspan="7" style="padding: 2px 8px; background: #f9f9f9; font-size: 8px;">
               <strong>Source:</strong> ${f.sourceSaudaNo||"-"} (${f.sourceSaudaType||"-"}) | 
               <strong>Qty:</strong> ${f.crosscutQuantity||"-"}g | 
               <strong>Source Rate:</strong> ₹${((d=f.sourceRate)==null?void 0:d.toLocaleString("en-IN"))||"-"} | 
-              <strong>Target Rate:</strong> ₹${((D=f.targetRate)==null?void 0:D.toLocaleString("en-IN"))||"-"} | 
+              <strong>Target Rate:</strong> ₹${((z=f.targetRate)==null?void 0:z.toLocaleString("en-IN"))||"-"} | 
               <strong>P/L:</strong> ₹${((I=f.profitLoss)==null?void 0:I.toLocaleString("en-IN"))||"-"}
             </td>
           </tr>
-        `}),(t.type==="Purchase"||t.type==="Purchase Return"||t.type==="sales"||t.type==="sales-return")&&((W=t.saudaCuts)==null?void 0:W.length)>0){const f=t.saudaCuts.some(d=>d.isCrossCut);t.saudaCuts.forEach(d=>{var E,A,G,Q,O;const D=d.cutFine&&d.rate?(d.cutFine*d.rate/1e3).toFixed(0):"-",I=d.isCrossCut&&d.crosscutQuantity&&d.rate?(d.crosscutQuantity*d.rate/1e3).toFixed(0):"-",H=d.saudaDate?new Date(d.saudaDate).toLocaleDateString("en-GB"):"-";s+=`
+        `}),(t.type==="Purchase"||t.type==="Purchase Return"||t.type==="sales"||t.type==="sales-return")&&((W=t.saudaCuts)==null?void 0:W.length)>0){const f=t.saudaCuts.some(d=>d.isCrossCut);t.saudaCuts.forEach(d=>{var E,A,G,Q,O;const z=d.cutFine&&d.rate?(d.cutFine*d.rate/1e3).toFixed(0):"-",I=d.isCrossCut&&d.crosscutQuantity&&d.rate?(d.crosscutQuantity*d.rate/1e3).toFixed(0):"-",H=d.saudaDate?new Date(d.saudaDate).toLocaleDateString("en-GB"):"-";s+=`
           <tr>
             <td colspan="7" style="padding: 2px 8px; background: #fafafa; font-size: 8px;">
              <strong> Sauda No:</strong> ${d.saudaNo||"-"} | 
@@ -93,7 +93,7 @@ async function K(e,a,F,v,N,x){let s="";const i=t=>t?new Date(t).toLocaleDateStri
             <strong>Booking:</strong> ${((E=d.quantity)==null?void 0:E.toFixed(2))||"-"}g | 
             <strong>Rate:</strong> ₹${((A=d.rate)==null?void 0:A.toFixed(2))||"-"} | 
             <strong>Cut Fine:</strong> ${((G=d.cutFine)==null?void 0:G.toFixed(2))||"-"}g | 
-            <strong>Amount:</strong> ₹${D}
+            <strong>Amount:</strong> ₹${z}
             ${f?` | <strong>Cross Qty:</strong> ${d.isCrossCut&&d.crosscutQuantity||"-"}g`:""}
             ${f?` | <strong>Source Rate:</strong> ${d.isCrossCut?"₹"+(((Q=d.sourceRate)==null?void 0:Q.toLocaleString("en-IN"))||"-"):"-"}`:""}
             ${f?` | <strong>Target Rate:</strong> ${d.isCrossCut?"₹"+(((O=d.targetRate)==null?void 0:O.toLocaleString("en-IN"))||"-"):"-"}`:""}
@@ -408,7 +408,7 @@ async function K(e,a,F,v,N,x){let s="";const i=t=>t?new Date(t).toLocaleDateStri
   `,a+='<hr style="border: 1px solid #ddd; margin: 10px 0;">',a+='<div class="footer">Thank you for your business!</div>',a+=`
     </body>
     </html>
-  `;const n=document.createElement("iframe");n.style.position="absolute",n.style.top="-9999px",n.style.left="-9999px",document.body.appendChild(n);const l=n.contentDocument||n.contentWindow.document;return l.open(),l.write(a),l.close(),n.contentWindow.focus(),n.contentWindow.print(),setTimeout(()=>{document.body.removeChild(n)},1e3),!0}function J(e){const a=(e==null?void 0:e.puggas)||[],F=(e==null?void 0:e.totalPuggas)??a.length,v=(e==null?void 0:e.totalWeight)??a.reduce((n,l)=>n+(Number(l.weight)||0),0),N=(e==null?void 0:e.totalFine)??a.reduce((n,l)=>n+(Number(l.fine)||0),0);let x="";a.forEach((n,l)=>{const u=parseFloat(n.weight)||0,h=parseFloat(n.touch)||0,r=n.fine?parseFloat(n.fine):u*h/100,c=r%1,m=Math.floor(r)+(c<.45?0:c<.9?.5:1),$=n.boughtFrom||n.partyName||"-";x+=`
+  `;const n=document.createElement("iframe");n.style.position="absolute",n.style.top="-9999px",n.style.left="-9999px",document.body.appendChild(n);const l=n.contentDocument||n.contentWindow.document;return l.open(),l.write(a),l.close(),n.contentWindow.focus(),n.contentWindow.print(),setTimeout(()=>{document.body.removeChild(n)},1e3),!0}function J(e){const a=((e==null?void 0:e.puggas)||[]).filter(n=>!n.isPurchaseReturn),F=a.length,v=a.reduce((n,l)=>n+(Number(l.weight)||0),0),N=a.reduce((n,l)=>n+(Number(l.fine)||0),0);let x="";a.forEach((n,l)=>{const u=parseFloat(n.weight)||0,h=parseFloat(n.touch)||0,r=n.fine?parseFloat(n.fine):u*h/100,c=r%1,m=Math.floor(r)+(c<.45?0:c<.9?.5:1),$=n.boughtFrom||n.partyName||"-";x+=`
       <tr>
         <td>${l+1}</td>
         <td>${n.paggaNo||"-"}</td>

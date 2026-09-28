@@ -43,10 +43,12 @@ import {
   Close as CloseIcon,
   Check as CheckIcon,
   Print as PrintIcon,
+  Download as DownloadIcon,
   HourglassEmpty as PendingIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
+import jsPDF from 'jspdf';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import partyService from '../services/partyService';
@@ -230,27 +232,28 @@ const Chorsa999 = () => {
 
   const fetchPakkiList = async () => {
     try {
+      const filters = {
+        type: tabValue,
+        page,
+        limit
+      };
+      if (searchPartyId) filters.partyId = searchPartyId;
+      if (filterStartDate) filters.startDate = filterStartDate;
+      if (filterEndDate) filters.endDate = filterEndDate;
+
       // Determine which endpoint to call based on the URL path
       if (location.pathname.includes('/chorsa')) {
         // Chorsa 999 specific listing
-        const data = await pakkiService.getChorsaPakkiList();
+        const data = await pakkiService.getChorsaPakkiList(filters);
         setChorsaList(data?.records || data || []);
         setTotalPages(data?.pagination?.totalPages || 1);
       } else if (location.pathname.includes('/bank')) {
         // Bank 9999 specific listing
-        const data = await pakkiService.getBankPakkiList();
+        const data = await pakkiService.getBankPakkiList(filters);
         setChorsaList(data?.records || data || []);
         setTotalPages(data?.pagination?.totalPages || 1);
       } else {
         // Generic listing with filters
-        const filters = {};
-        filters.type = tabValue;
-        if (searchPartyId) filters.partyId = searchPartyId;
-        if (filterStartDate) filters.startDate = filterStartDate;
-        if (filterEndDate) filters.endDate = filterEndDate;
-        filters.page = page;
-        filters.limit = limit;
-
         const response = await pakkiService.getPakkiList(filters);
         const responseData = response?.data || response;
         setChorsaList(responseData?.records || responseData);
@@ -454,53 +457,279 @@ const Chorsa999 = () => {
     setChorsaToDelete(null);
   };
 
+  const handleDownloadPdf = (chorsa) => {
+    const cuts = chorsa.saudaCuts || [];
+    const cutsCount = cuts.length;
+    const baseHeight = 85;
+    const extraHeight = cutsCount > 0 ? (cutsCount * 6 + 25) : 0;
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [80, Math.max(80, baseHeight + extraHeight)],
+    });
+
+    const typeStr = (chorsa.type || tabValue || '').toLowerCase();
+    const isBuy = typeStr === 'buy' || typeStr === 'purchase' || (chorsa.invoiceNo && chorsa.invoiceNo.startsWith('PKP'));
+    const title = isBuy ? 'Incoming Invoice' : 'Outgoing Sales Invoice';
+    const partyName = chorsa.partyId?.partyName || chorsa.partyName || '-';
+    const invDate = chorsa.date ? new Date(chorsa.date).toLocaleDateString('en-GB') : 'N/A';
+    const invNo = chorsa.invoiceNo || ((isBuy ? 'PKP-' : 'PKS-') + String(chorsa._id || chorsa.id || '').slice(-4));
+    const categoryName = chorsa.chorsaType === 'bank-9999' ? 'Bank 9999' : 'Chorsa 999';
+    const pcs = chorsa.pcs || 1;
+    const weight = (Number(chorsa.weight) || 0).toFixed(2);
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BR JEWELLERS', 40, 10, { align: 'center' });
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(title, 40, 16, { align: 'center' });
+
+    doc.line(5, 18, 75, 18);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Party: ${partyName}`, 5, 24);
+    doc.text(`Date: ${invDate}`, 5, 30);
+    doc.text(`Invoice No: ${invNo}`, 5, 36);
+
+    doc.line(5, 38, 75, 38);
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Sr', 5, 44);
+    doc.text('Item', 15, 44);
+    doc.text('Pcs', 45, 44);
+    doc.text('Wt(g)', 60, 44);
+
+    doc.line(5, 46, 75, 46);
+
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    let yPosition = 52;
+    doc.text('1', 5, yPosition);
+    doc.text(categoryName, 15, yPosition);
+    doc.text(String(pcs), 45, yPosition);
+    doc.text(weight, 60, yPosition);
+
+    yPosition += 6;
+    doc.line(5, yPosition, 75, yPosition);
+
+    if (cuts.length > 0) {
+      yPosition += 5;
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('SAUDA CUTS DETAILS', 5, yPosition);
+      yPosition += 3;
+      doc.line(5, yPosition, 75, yPosition);
+      yPosition += 4;
+
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text('#', 5, yPosition);
+      doc.text('Sauda No', 10, yPosition);
+      doc.text('Rate', 38, yPosition, { align: 'right' });
+      doc.text('Cut(g)', 54, yPosition, { align: 'right' });
+      doc.text('Amt(Rs)', 75, yPosition, { align: 'right' });
+
+      yPosition += 2;
+      doc.line(5, yPosition, 75, yPosition);
+      yPosition += 4;
+
+      doc.setFont('helvetica', 'normal');
+      cuts.forEach((cut, idx) => {
+        const cutQty = Number(cut.cutWeight || cut.cutFine) || 0;
+        const rate = Number(cut.rate) || 0;
+        const amt = Math.trunc(cutQty * rate / 1000);
+        doc.text(String(idx + 1), 5, yPosition);
+        doc.text(String(cut.saudaNo || (cut.isBhavCut ? 'Bhav Cut' : '-')), 10, yPosition);
+        doc.text(rate ? rate.toLocaleString('en-IN') : '-', 38, yPosition, { align: 'right' });
+        doc.text(cutQty.toFixed(2), 54, yPosition, { align: 'right' });
+        doc.text(amt ? amt.toLocaleString('en-IN') : '-', 75, yPosition, { align: 'right' });
+        yPosition += 5;
+      });
+
+      doc.line(5, yPosition, 75, yPosition);
+    }
+
+    yPosition += 5;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Total Pcs: ${pcs}`, 5, yPosition);
+    doc.text(`Gross Wt: ${weight}g`, 5, yPosition + 5);
+    let nextY = yPosition + 10;
+
+    if (cuts.length > 0) {
+      const totalCutWt = cuts.reduce((s, c) => s + (Number(c.cutWeight || c.cutFine) || 0), 0).toFixed(2);
+      const totalAmt = Math.trunc(cuts.reduce((s, c) => s + ((Number(c.cutWeight || c.cutFine) || 0) * (Number(c.rate) || 0) / 1000), 0));
+      doc.text(`Total Cut Wt: ${totalCutWt}g`, 5, nextY);
+      nextY += 5;
+      doc.text(`Total Amount: Rs. ${totalAmt.toLocaleString('en-IN')}`, 5, nextY);
+      nextY += 5;
+    }
+
+    doc.line(5, nextY, 75, nextY);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Thank you for your business!', 40, nextY + 6, { align: 'center' });
+
+    doc.save(`${partyName}-${invNo}.pdf`);
+  };
+
   const handlePrintChorsa = (chorsa) => {
+    const typeStr = (chorsa.type || tabValue || '').toLowerCase();
+    const isBuy = typeStr === 'buy' || typeStr === 'purchase' || (chorsa.invoiceNo && chorsa.invoiceNo.startsWith('PKP'));
+    const title = isBuy ? 'Incoming Invoice' : 'Outgoing Sales Invoice';
+    const partyName = chorsa.partyId?.partyName || chorsa.partyName || '-';
+    const invDate = chorsa.date ? new Date(chorsa.date).toLocaleDateString('en-GB') : '-';
+    const invNo = chorsa.invoiceNo || ((isBuy ? 'PKP-' : 'PKS-') + String(chorsa._id || chorsa.id || '').slice(-4));
+    const categoryName = chorsa.chorsaType === 'bank-9999' ? 'Bank 9999' : 'Chorsa 999';
+    const pcs = chorsa.pcs || 1;
+    const weight = (Number(chorsa.weight) || 0).toFixed(2);
+    const cuts = chorsa.saudaCuts || [];
+
     let htmlContent = `
       <html>
       <head>
-        <title>${pageTitle} Print</title>
+        <title>${title} - ${invNo}</title>
         <style>
-          body { font-family: Arial, sans-serif; font-size: 14px; padding: 30px; }
-          h1 { text-align: center; margin-bottom: 20px; }
-          .header { margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 15px; }
-          .details { margin-bottom: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-          th { background-color: #f2f2f2; font-weight: bold; }
-          .label { font-weight: bold; color: #333; }
-          .value { color: #666; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: Arial, sans-serif; 
+            font-size: 14px; 
+            padding: 8px;
+            width: 80mm;
+            text-align: center;
+          }
+          h1 { 
+            text-align: center; 
+            margin-bottom: 3px; 
+            font-size: 16px; 
+            font-weight: bold;
+          }
+          .title {
+            text-align: center;
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #333;
+          }
+          .header { 
+            text-align: left;
+            margin-bottom: 8px; 
+          }
+          p { margin: 2px 0; font-size: 12px; font-weight: bold; }
+          table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin: 6px 0; 
+          }
+          th, td { 
+            padding: 3px 2px; 
+            text-align: left; 
+            font-size: 11px;
+            font-weight: 600;
+          }
+          th { 
+            background-color: #f2f2f2; 
+            font-weight: bold; 
+          }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .total-section { 
+            text-align: left;
+            margin-top: 6px; 
+          }
+          .footer { 
+            margin-top: 10px; 
+            font-size: 10px; 
+            text-align: center; 
+          }
+          hr {
+            border: none;
+            border-top: 1px solid #333;
+            margin: 5px 0;
+          }
           @media print {
             body { padding: 0; }
+            @page {
+              size: 80mm auto;
+              margin: 0;
+            }
           }
         </style>
       </head>
       <body>
-        <h1>${pageTitle.toUpperCase()} DETAILS</h1>
+        <h1>BR JEWELLERS</h1>
+        <div class="title">${title}</div>
         <div class="header">
-          <p><strong>Type:</strong> ${chorsa.type === 'buy' ? 'Buy' : 'Sell'}</p>
-          <p><strong>Category:</strong> ${chorsa.chorsaType === 'bank-9999' ? 'Bank 9999' : 'Chorsa 999'}</p>
-          <p><strong>Party Name:</strong> ${chorsa.partyId?.partyName || chorsa.partyName || '-'}</p>
-          <p><strong>Date:</strong> ${formatDate(chorsa.date)}</p>
+          <p>Party: ${partyName}</p>
+          <p>Date: ${invDate}</p>
+          <p>Invoice No: ${invNo}</p>
         </div>
+        <hr>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 15%;">Sr</th>
+              <th style="width: 45%;">Item</th>
+              <th class="text-center" style="width: 15%;">Pcs</th>
+              <th class="text-right" style="width: 25%;">Wt(g)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>${categoryName}</td>
+              <td class="text-center">${pcs}</td>
+              <td class="text-right">${weight}</td>
+            </tr>
+          </tbody>
+        </table>
+        <hr>
 
-        <div class="details">
+        ${cuts.length > 0 ? `
+          <div style="font-weight: bold; font-size: 11px; margin: 4px 0 2px 0; text-align: left;">SAUDA CUTS DETAILS</div>
           <table>
-            <tr>
-              <td class="label">Invoice No</td>
-              <td class="value">${chorsa.invoiceNo || '-'}</td>
-            </tr>
-            <tr>
-              <td class="label">Weight</td>
-              <td class="value">${chorsa.weight || '-'} g</td>
-            </tr>
-            <tr>
-              <td class="label">Pcs</td>
-              <td class="value">${chorsa.pcs || '-'}</td>
-            </tr>
+            <thead>
+              <tr>
+                <th style="width: 8%;">#</th>
+                <th style="width: 32%;">Sauda No</th>
+                <th class="text-right" style="width: 20%;">Rate</th>
+                <th class="text-right" style="width: 20%;">Cut(g)</th>
+                <th class="text-right" style="width: 20%;">Amt(₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cuts.map((cut, idx) => {
+                const cutQty = Number(cut.cutWeight || cut.cutFine) || 0;
+                const rate = Number(cut.rate) || 0;
+                const amt = Math.trunc(cutQty * rate / 1000);
+                return `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td>${cut.saudaNo || (cut.isBhavCut ? 'Bhav Cut' : '-')}</td>
+                  <td class="text-right">${rate ? rate.toLocaleString('en-IN') : '-'}</td>
+                  <td class="text-right">${cutQty.toFixed(2)}</td>
+                  <td class="text-right">${amt ? amt.toLocaleString('en-IN') : '-'}</td>
+                </tr>
+              `;}).join('')}
+            </tbody>
           </table>
-        </div>
+          <hr>
+        ` : ''}
 
-        <p style="margin-top: 40px; color: #666; text-align: center;">Printed: ${new Date().toLocaleString('en-GB')}</p>
+        <div class="total-section">
+          <p>Total Pcs: ${pcs}</p>
+          <p>Gross Wt: ${weight}g</p>
+          ${cuts.length > 0 ? `
+            <p>Total Cut Wt: ${(cuts.reduce((s, c) => s + (Number(c.cutWeight || c.cutFine) || 0), 0)).toFixed(2)}g</p>
+            <p>Total Amount: ₹${Math.trunc(cuts.reduce((s, c) => s + ((Number(c.cutWeight || c.cutFine) || 0) * (Number(c.rate) || 0) / 1000), 0)).toLocaleString('en-IN')}</p>
+          ` : ''}
+        </div>
+        <hr>
+        <div class="footer">Thank you for your business!</div>
       </body>
       </html>
     `;
@@ -1047,7 +1276,7 @@ const Chorsa999 = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {chorsaList.map((chorsa, index) => (
+                  {chorsaList.filter(c => !c.type || c.type === tabValue).map((chorsa, index) => (
                     <TableRow
                       key={chorsa._id || chorsa.id}
                     >
@@ -1065,27 +1294,42 @@ const Chorsa999 = () => {
                       <TableCell>{chorsa.weight || '-'} g</TableCell>
                       <TableCell>{chorsa.pcs || '-'}</TableCell>
                       <TableCell>
-                        <IconButton
-                          size="small"
-                          onClick={() => handlePrintChorsa(chorsa)}
-                          sx={{ color: '#10b981', '&:hover': { background: 'rgba(16, 185, 129, 0.1)' } }}
-                        >
-                          <PrintIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleEditChorsa(chorsa)}
-                          sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          onClick={() => handleDeleteChorsa(chorsa)}
-                          sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+                        <Tooltip title="Download PDF">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDownloadPdf(chorsa)}
+                            sx={{ color: '#10b981', '&:hover': { background: 'rgba(16, 185, 129, 0.1)' } }}
+                          >
+                            <DownloadIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Print Invoice">
+                          <IconButton
+                            size="small"
+                            onClick={() => handlePrintChorsa(chorsa)}
+                            sx={{ color: '#3b82f6', '&:hover': { background: 'rgba(59, 130, 246, 0.1)' } }}
+                          >
+                            <PrintIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditChorsa(chorsa)}
+                            sx={{ color: '#6366f1', '&:hover': { background: 'rgba(99, 102, 241, 0.1)' } }}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteChorsa(chorsa)}
+                            sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}

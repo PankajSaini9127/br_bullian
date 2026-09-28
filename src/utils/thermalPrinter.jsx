@@ -1182,10 +1182,10 @@ export async function printInvoiceBluetooth(invoice) {
 }
 
 export function printKachiStock(stockData) {
-  const puggas = stockData?.puggas || [];
-  const totalPuggas = stockData?.totalPuggas ?? puggas.length;
-  const totalWeight = stockData?.totalWeight ?? puggas.reduce((sum, p) => sum + (Number(p.weight) || 0), 0);
-  const totalFine = stockData?.totalFine ?? puggas.reduce((sum, p) => sum + (Number(p.fine) || 0), 0);
+  const puggas = (stockData?.puggas || []).filter(p => !p.isPurchaseReturn);
+  const totalPuggas = puggas.length;
+  const totalWeight = puggas.reduce((sum, p) => sum + (Number(p.weight) || 0), 0);
+  const totalFine = puggas.reduce((sum, p) => sum + (Number(p.fine) || 0), 0);
 
   let rowsHtml = '';
   puggas.forEach((item, i) => {
