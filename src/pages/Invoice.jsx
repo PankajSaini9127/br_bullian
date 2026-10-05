@@ -49,6 +49,7 @@ import {
   Bluetooth as BluetoothIcon,
   AssignmentReturn as AssignmentReturnIcon,
   HourglassEmpty as PendingIcon,
+  WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -65,6 +66,7 @@ const Invoice = () => {
   const [selectedPartyName, setSelectedPartyName] = useState('');
   const [partySaudaSummary, setPartySaudaSummary] = useState(null);
   const [excessFineModalOpen, setExcessFineModalOpen] = useState(false);
+  const [isEditingExcess, setIsEditingExcess] = useState(false);
   const [excessWeight, setExcessWeight] = useState('');
   const [excessRate, setExcessRate] = useState('');
   const [excessFine, setExcessFine] = useState(0);
@@ -89,15 +91,7 @@ const Invoice = () => {
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formError, setFormError] = useState('');
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
-  const [editItems, setEditItems] = useState([]);
-  const [editPartyId, setEditPartyId] = useState('');
-  const [editInvoiceDate, setEditInvoiceDate] = useState('');
-  const [editInvoiceNo, setEditInvoiceNo] = useState('');
-  const [editCurrentPagga, setEditCurrentPagga] = useState([]);
-  const [editPartySearchQuery, setEditPartySearchQuery] = useState('');
-  const [editPartySearchResults, setEditPartySearchResults] = useState([]);
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [filterPartyId, setFilterPartyId] = useState('');
@@ -118,7 +112,7 @@ const Invoice = () => {
   useEffect(() => {
     const fetchParties = async () => {
       try {
-        const response = await partyService.getParties();
+        const response = await partyService.getParties({ limit: 1000 });
         if (response && response.parties) {
           setParties(response.parties);
         }
@@ -195,36 +189,24 @@ const Invoice = () => {
 
     return () => clearTimeout(debounceTimer);
   }, [partySearchQuery, parties]);
-
-  useEffect(() => {
-    const debounceTimer = setTimeout(async () => {
-      if (editPartySearchQuery) {
-        try {
-          const response = await partyService.searchParties(editPartySearchQuery);
-          setEditPartySearchResults(response?.data?.parties || []);
-        } catch (error) {
-          console.error('Error searching parties:', error);
+  const handlePaggaCountChange = (value) => {
+    if (value === '') {
+      setPaggaCount('');
+      return;
+    }
+    const num = parseInt(value);
+    if (!isNaN(num) && num >= 1 && num <= 50) {
+      setPaggaCount(num);
+      setItems((prevItems) => {
+        const newItems = [];
+        for (let i = 1; i <= num; i++) {
+          const existingItem = prevItems.find((item) => item.id === i);
+          newItems.push(existingItem || { id: i, paggaNo: '', weight: '', touch: '', fine: '' });
         }
-      } else {
-        setEditPartySearchResults(parties);
-      }
-    }, 1000);
-
-    return () => clearTimeout(debounceTimer);
-  }, [editPartySearchQuery, parties]);
-
-  useEffect(() => {
-    const updateItems = () => {
-      const newItems = [];
-      for (let i = 1; i <= paggaCount; i++) {
-        const existingItem = items.find(item => item.id === i);
-        newItems.push(existingItem || { id: i, paggaNo: '', weight: '', touch: '', fine: '' });
-      }
-      setItems(newItems);
-    };
-
-    updateItems();
-  }, [paggaCount]);
+        return newItems;
+      });
+    }
+  };
 
   const handleInputChange = (id, field, value) => {
     const updatedItems = items.map((item) => {
@@ -261,7 +243,7 @@ const Invoice = () => {
   const handleKeyDown = (id, field, e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      const currentIndex = items.findIndex(item => item.id === id);
+      const currentIndex = items.findIndex((item) => item.id === id);
 
       if (field === 'paggaNo') {
         const weightInput = document.getElementById(`weight-${id}`);
@@ -275,93 +257,178 @@ const Invoice = () => {
           const nextPaggaNoInput = document.getElementById(`paggaNo-${nextRowId}`);
           if (nextPaggaNoInput) nextPaggaNoInput.focus();
         } else {
-          setPaggaCount(paggaCount + 1);
-          setTimeout(() => {
-            const newId = paggaCount + 1;
-            const newPaggaNoInput = document.getElementById(`paggaNo-${newId}`);
-            if (newPaggaNoInput) newPaggaNoInput.focus();
-          }, 100);
+          setItems((prev) => {
+            const newId = prev.length + 1;
+            const newItems = [...prev, { id: newId, paggaNo: '', weight: '', touch: '', fine: '' }];
+            setPaggaCount(newItems.length);
+            setTimeout(() => {
+              const newPaggaNoInput = document.getElementById(`paggaNo-${newId}`);
+              if (newPaggaNoInput) newPaggaNoInput.focus();
+            }, 100);
+            return newItems;
+          });
         }
       }
     }
   };
 
   const handleRemovePagga = (id) => {
-    if (items.length > 1) {
-      const updatedItems = items.filter(item => item.id !== id);
-      setItems(updatedItems);
+    setItems((prev) => {
+      if (prev.length <= 1) return prev;
+      const updatedItems = prev.filter((item) => item.id !== id).map((item, idx) => ({
+        ...item,
+        id: idx + 1,
+      }));
       setPaggaCount(updatedItems.length);
-    }
+      return updatedItems;
+    });
   };
 
   const handleEditInvoice = (invoice) => {
     setEditingInvoice(invoice);
-    setEditPartyId(invoice.partyId?._id || invoice.partyId);
-    setEditInvoiceDate(invoice.invoiceDate);
-    setEditInvoiceNo(invoice.invoiceNo || '');
-    setEditCurrentPagga(invoice.items || []);
-    setEditModalOpen(true);
-  };
+    const pId = invoice.partyId?._id ? String(invoice.partyId._id) : (invoice.partyId ? String(invoice.partyId) : '');
+    const pName = invoice.partyId?.partyName || invoice.partyName || '';
+    setSelectedPartyId(pId);
+    setSelectedPartyName(pName);
+    setInvoiceDate(invoice.invoiceDate ? invoice.invoiceDate.split('T')[0] : today);
 
-  const handleRemoveEditPagga = (index) => {
-    setEditCurrentPagga(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleAddEditPagga = () => {
-    setEditCurrentPagga(prev => [...prev, { paggaNo: '', weight: '', touch: '', fine: '' }]);
-  };
-
-  const handleEditPaggaChange = (index, field, value) => {
-    const updatedPagga = editCurrentPagga.map((pagga, i) => {
-      if (i === index) {
-        const updatedItem = { ...pagga, [field]: value };
-        if (field === 'touch') {
-          let formattedValue = value.replace(/\D/g, '');
-          if (formattedValue.length > 2) {
-            formattedValue = formattedValue.slice(0, 2) + '.' + formattedValue.slice(2, 4);
-          }
-          updatedItem.touch = formattedValue;
+    if (pId && pName) {
+      setParties((prev) => {
+        if (!prev.some((p) => String(p._id) === String(pId))) {
+          return [{ _id: pId, partyName: pName }, ...prev];
         }
-        if (field === 'weight' || field === 'touch') {
-          const weight = field === 'weight' ? value : pagga.weight;
-          const touch = field === 'touch' ? updatedItem.touch : pagga.touch;
-          if (weight && touch) {
-            const fine = parseFloat(weight) * (parseFloat(touch) / 100);
-            updatedItem.fine = roundOffFineFormatted(fine);
-          } else {
-            updatedItem.fine = '';
-          }
-        }
-        return updatedItem;
+        return prev;
+      });
+    }
+
+    const existingItems = (invoice.items || []).map((item, idx) => {
+      const weight = item.weight != null ? String(item.weight) : '';
+      const touch = item.touch != null ? String(item.touch) : '';
+      let fine = '';
+      if (weight && touch) {
+        fine = roundOffFineFormatted(parseFloat(weight) * (parseFloat(touch) / 100));
+      } else if (item.fine != null) {
+        fine = roundOffFineFormatted(item.fine);
       }
-      return pagga;
+      return {
+        id: idx + 1,
+        paggaNo: item.paggaNo || '',
+        weight,
+        touch,
+        fine,
+      };
     });
-    setEditCurrentPagga(updatedPagga);
-  };
 
-  const handleCloseEditModal = () => {
-    setEditModalOpen(false);
-    setEditingInvoice(null);
-    setEditCurrentPagga([]);
-    setEditPartyId('');
-    setEditInvoiceDate('');
-    setEditPartySearchQuery('');
-    setEditPartySearchResults([]);
+    const finalItems = existingItems.length > 0 ? existingItems : [
+      { id: 1, paggaNo: '', weight: '', touch: '', fine: '' },
+      { id: 2, paggaNo: '', weight: '', touch: '', fine: '' },
+      { id: 3, paggaNo: '', weight: '', touch: '', fine: '' },
+      { id: 4, paggaNo: '', weight: '', touch: '', fine: '' },
+    ];
+    setItems(finalItems);
+    setPaggaCount(finalItems.length);
+
+    if (pId) {
+      fetchPartySaudaSummary(pId);
+    } else {
+      setPartySaudaSummary(null);
+    }
+    setFormError('');
+    setShowAddForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleUpdateInvoice = async () => {
     const toastId = toast.loading('Updating invoice...');
     try {
-      if (!editPartyId) {
+      setFormError('');
+      if (!selectedPartyId) {
         toast.dismiss(toastId);
-        toast.error('Please select a party');
+        setFormError('Please select a party');
         return;
       }
+
+      if (!paggaCount || paggaCount <= 0) {
+        toast.dismiss(toastId);
+        setFormError('Pagga count must be greater than 0');
+        return;
+      }
+
+      for (const item of items) {
+        const hasPaggaNo = item.paggaNo && String(item.paggaNo).trim() !== '';
+        const hasWeight = item.weight && String(item.weight).trim() !== '';
+        const touchStr = String(item.touch || '').trim();
+        const hasTouch = touchStr !== '';
+        const hasAnyValue = hasPaggaNo || hasWeight || hasTouch;
+        if (hasAnyValue) {
+          if (!hasPaggaNo) {
+            toast.dismiss(toastId);
+            setFormError(`Row ${item.id}: Pagga No is required`);
+            return;
+          }
+          if (!hasWeight) {
+            toast.dismiss(toastId);
+            setFormError(`Row ${item.id}: Weight is required`);
+            return;
+          }
+          if (!hasTouch) {
+            toast.dismiss(toastId);
+            setFormError(`Row ${item.id}: Touch is required`);
+            return;
+          }
+        }
+      }
+
+      const filledPaggaItems = items.filter(item =>
+        item.paggaNo && String(item.paggaNo).trim() !== '' &&
+        item.weight && String(item.weight).trim() !== '' &&
+        item.touch && String(item.touch).trim() !== ''
+      );
+
+      if (filledPaggaItems.length === 0) {
+        toast.dismiss(toastId);
+        setFormError('Please fill at least one pagga item with Pagga No, Weight, and Touch');
+        return;
+      }
+
+      const newTotalFine = filledPaggaItems.reduce((total, item) => {
+        const weight = parseFloat(item.weight) || 0;
+        const touch = parseFloat(item.touch) || 0;
+        const fine = weight * touch / 100;
+        return total + roundOffFine(fine);
+      }, 0);
+
+      // Check if not return invoice and fine exceeds available pending purchase fine
+      if (!editingInvoice?.isReturn) {
+        const oldTotalFine = (editingInvoice.items || []).reduce((total, item) => {
+          const weight = parseFloat(item.weight) || 0;
+          const touch = parseFloat(item.touch) || 0;
+          const fine = weight * touch / 100;
+          return total + roundOffFine(fine);
+        }, 0);
+        const oldBhavcutWeight = Number(editingInvoice.bhavcutSaudaId?.quantity || 0);
+        const oldNormalCut = Math.max(0, oldTotalFine - oldBhavcutWeight);
+
+        const currentPartyRemaining = Number(partySaudaSummary?.purchase?.remaining || 0);
+        const effectiveAvailable = currentPartyRemaining + oldNormalCut;
+
+        if (newTotalFine > effectiveAvailable) {
+          toast.dismiss(toastId);
+          const excess = roundOffFine(newTotalFine - effectiveAvailable);
+          setExcessFine(excess);
+          setExcessWeight(excess.toFixed(2));
+          setExcessRate(editingInvoice.bhavcutSaudaId?.rate ? String(editingInvoice.bhavcutSaudaId.rate) : '');
+          setIsEditingExcess(true);
+          setExcessFineModalOpen(true);
+          return;
+        }
+      }
+
       const invoiceData = {
-        partyId: editPartyId,
-        invoiceDate: editInvoiceDate,
-        invoiceNo: editInvoiceNo,
-        paggaItems: editCurrentPagga,
+        partyId: selectedPartyId,
+        invoiceDate: invoiceDate,
+        invoiceNo: editingInvoice.invoiceNo,
+        paggaItems: filledPaggaItems,
       };
       await invoiceService.updateInvoiceDetails(editingInvoice._id || editingInvoice.id, invoiceData);
       const params = { page, limit };
@@ -370,7 +437,7 @@ const Invoice = () => {
       if (filterPartyId) params.partyId = filterPartyId;
       const response = await invoiceService.getInvoices(params);
       setInvoices(response?.invoices || response || []);
-      handleCloseEditModal();
+      handleBackToList();
       toast.dismiss(toastId);
       toast.success('Invoice updated successfully!');
     } catch (error) {
@@ -478,9 +545,11 @@ const Invoice = () => {
   };
 
   const handleAddPagga = () => {
-    const newId = items.length + 1;
-    setItems([...items, { id: newId, paggaNo: '', weight: '', touch: '', fine: '' }]);
-    setPaggaCount(paggaCount + 1);
+    setItems((prev) => {
+      const newItems = [...prev, { id: prev.length + 1, paggaNo: '', weight: '', touch: '', fine: '' }];
+      setPaggaCount(newItems.length);
+      return newItems;
+    });
   };
 
   const fetchPartySaudaSummary = async (partyId) => {
@@ -494,7 +563,7 @@ const Invoice = () => {
   };
 
   const handleExcessFineSubmit = async () => {
-    const toastId = toast.loading('Saving invoice...');
+    const toastId = toast.loading(isEditingExcess ? 'Updating invoice...' : 'Saving invoice...');
     try {
       setFormError('');
       if (!excessWeight || !excessRate) {
@@ -502,11 +571,39 @@ const Invoice = () => {
         setFormError('Please fill weight and rate');
         return;
       }
+
       const filledPaggaItems = items.filter(item =>
-        item.paggaNo && item.paggaNo.trim() !== '' &&
-        item.weight && item.weight.trim() !== '' &&
-        item.touch && item.touch.trim() !== ''
+        item.paggaNo && String(item.paggaNo).trim() !== '' &&
+        item.weight && String(item.weight).trim() !== '' &&
+        item.touch && String(item.touch).trim() !== ''
       );
+
+      if (isEditingExcess) {
+        const invoiceData = {
+          partyId: selectedPartyId,
+          invoiceDate: invoiceDate,
+          invoiceNo: editingInvoice?.invoiceNo,
+          paggaItems: filledPaggaItems,
+          bhavcut: {
+            weight: Number(excessWeight),
+            rate: Number(excessRate),
+            amount: excessFine
+          }
+        };
+        await invoiceService.updateInvoiceDetails(editingInvoice._id || editingInvoice.id, invoiceData);
+        const params = { page, limit };
+        if (filterStartDate) params.startDate = filterStartDate;
+        if (filterEndDate) params.endDate = filterEndDate;
+        if (filterPartyId) params.partyId = filterPartyId;
+        const response = await invoiceService.getInvoices(params);
+        setInvoices(response?.invoices || response || []);
+        handleBackToList();
+        handleCloseExcessFineModal();
+        toast.dismiss(toastId);
+        toast.success('Invoice updated successfully!');
+        return;
+      }
+
       const invoiceData = {
         partyId: selectedPartyId,
         invoiceDate: invoiceDate,
@@ -517,8 +614,13 @@ const Invoice = () => {
           amount: excessFine
         }
       };
-      await invoiceService.createInvoice(invoiceData);
-      const response = await invoiceService.getInvoices();
+      const createdRes = await invoiceService.createInvoice(invoiceData);
+      const createdInvoice = createdRes?.data?.invoice || createdRes?.invoice || createdRes;
+      const params = { page, limit };
+      if (filterStartDate) params.startDate = filterStartDate;
+      if (filterEndDate) params.endDate = filterEndDate;
+      if (filterPartyId) params.partyId = filterPartyId;
+      const response = await invoiceService.getInvoices(params);
       let invoiceList = [];
       if (Array.isArray(response)) {
         invoiceList = response;
@@ -528,22 +630,17 @@ const Invoice = () => {
         invoiceList = response.data;
       }
       setInvoices(invoiceList);
-      setSelectedPartyId('');
-      setSelectedPartyName('');
-      setInvoiceDate(today);
-      setPaggaCount(4);
-      setItems([
-        { id: 1, paggaNo: '', weight: '', touch: '', fine: '' },
-        { id: 2, paggaNo: '', weight: '', touch: '', fine: '' },
-        { id: 3, paggaNo: '', weight: '', touch: '', fine: '' },
-        { id: 4, paggaNo: '', weight: '', touch: '', fine: '' },
-      ]);
-      setShowAddForm(false);
-      setFormError('');
-      setExcessFineModalOpen(false);
-      setExcessWeight('');
-      setExcessRate('');
-      setExcessFine(0);
+      if (createdInvoice) {
+        if (!createdInvoice.partyId || typeof createdInvoice.partyId !== 'object') {
+          createdInvoice.partyId = { _id: selectedPartyId, partyName: selectedPartyName };
+        }
+        if (!createdInvoice.items || createdInvoice.items.length === 0) {
+          createdInvoice.items = filledPaggaItems;
+        }
+        handleShareWhatsApp(createdInvoice, true);
+      }
+      handleBackToList();
+      handleCloseExcessFineModal();
       toast.dismiss(toastId);
       toast.success('Invoice created successfully');
     } catch (error) {
@@ -572,6 +669,7 @@ const Invoice = () => {
 
   const handleCloseExcessFineModal = () => {
     setExcessFineModalOpen(false);
+    setIsEditingExcess(false);
     setExcessWeight('');
     setExcessRate('');
     setExcessFine(0);
@@ -588,11 +686,28 @@ const Invoice = () => {
   };
 
   const handleShowAddForm = () => {
+    handleBackToList();
     setShowAddForm(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBackToList = () => {
     setShowAddForm(false);
+    setEditingInvoice(null);
+    setSelectedPartyId('');
+    setSelectedPartyName('');
+    setInvoiceDate(today);
+    setPaggaCount(4);
+    setItems([
+      { id: 1, paggaNo: '', weight: '', touch: '', fine: '' },
+      { id: 2, paggaNo: '', weight: '', touch: '', fine: '' },
+      { id: 3, paggaNo: '', weight: '', touch: '', fine: '' },
+      { id: 4, paggaNo: '', weight: '', touch: '', fine: '' },
+    ]);
+    setPartySaudaSummary(null);
+    setPendingKachiGroups([]);
+    setFormError('');
+    setIsEditingExcess(false);
   };
 
   const handleSaveInvoice = async () => {
@@ -657,8 +772,13 @@ const Invoice = () => {
         invoiceDate: invoiceDate,
         paggaItems: filledPaggaItems,
       };
-      await invoiceService.createInvoice(invoiceData);
-      const response = await invoiceService.getInvoices();
+      const createdRes = await invoiceService.createInvoice(invoiceData);
+      const createdInvoice = createdRes?.data?.invoice || createdRes?.invoice || createdRes;
+      const params = { page, limit };
+      if (filterStartDate) params.startDate = filterStartDate;
+      if (filterEndDate) params.endDate = filterEndDate;
+      if (filterPartyId) params.partyId = filterPartyId;
+      const response = await invoiceService.getInvoices(params);
       let invoiceList = [];
       if (Array.isArray(response)) {
         invoiceList = response;
@@ -668,18 +788,16 @@ const Invoice = () => {
         invoiceList = response.data;
       }
       setInvoices(invoiceList);
-      setSelectedPartyId('');
-      setSelectedPartyName('');
-      setInvoiceDate(today);
-      setPaggaCount(4);
-      setItems([
-        { id: 1, paggaNo: '', weight: '', touch: '', fine: '' },
-        { id: 2, paggaNo: '', weight: '', touch: '', fine: '' },
-        { id: 3, paggaNo: '', weight: '', touch: '', fine: '' },
-        { id: 4, paggaNo: '', weight: '', touch: '', fine: '' },
-      ]);
-      setShowAddForm(false);
-      setFormError('');
+      if (createdInvoice) {
+        if (!createdInvoice.partyId || typeof createdInvoice.partyId !== 'object') {
+          createdInvoice.partyId = { _id: selectedPartyId, partyName: selectedPartyName };
+        }
+        if (!createdInvoice.items || createdInvoice.items.length === 0) {
+          createdInvoice.items = filledPaggaItems;
+        }
+        handleShareWhatsApp(createdInvoice, true);
+      }
+      handleBackToList();
       toast.dismiss(toastId);
       toast.success('Invoice created successfully');
     } catch (error) {
@@ -787,6 +905,103 @@ const Invoice = () => {
     const partyName = invoice?.partyId?.partyName || invoice?.partyName || 'invoice';
     doc.save(`${partyName}-${invoice?.invoiceNo || 'unknown'}.pdf`);
   };
+
+  const handleShareWhatsApp = (invoice, shouldDownloadPdf = true) => {
+    if (!invoice) return;
+    if (shouldDownloadPdf) {
+      try {
+        handlePrintInvoice(invoice);
+      } catch (err) {
+        console.error('Error generating PDF for WhatsApp:', err);
+      }
+    }
+
+    const party = (invoice.partyId && typeof invoice.partyId === 'object') ? invoice.partyId : {};
+    const partyName = party.partyName || invoice.partyName || selectedPartyName || '-';
+    let contactNo = party.contactNo || '';
+    if (!contactNo && parties.length > 0) {
+      const pId = party._id || invoice.partyId;
+      const found = parties.find(p => String(p._id) === String(pId));
+      if (found && found.contactNo) contactNo = found.contactNo;
+    }
+
+    const invNo = invoice.invoiceNo || 'INV-' + String(invoice.id || invoice._id || '').slice(-4);
+    const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+
+    const itemsList = (invoice.items || []).filter(item => item && (item.paggaNo || item.weight || item.touch || item.fine));
+    const totalPaggas = itemsList.length;
+
+    let totalGrossWt = 0;
+    let totalFine = 0;
+
+    const paggaRows = itemsList.map((item, idx) => {
+      const weight = parseFloat(item.weight) || 0;
+      const touch = parseFloat(item.touch) || 0;
+      const fine = item.fine != null ? parseFloat(item.fine) : (weight * touch / 100);
+      totalGrossWt += weight;
+      totalFine += roundOffFine(fine);
+      return `${idx + 1}. *#${item.paggaNo || '-'}* | Wt: ${weight.toFixed(2)}g | Touch: ${touch.toFixed(2)}% | Fine: ${roundOffFineFormatted(fine)}g`;
+    }).join('\n');
+
+    let msg = `*BR JEWELLERS*\n`;
+    msg += `--------------------------------\n`;
+    msg += `📥 *INCOMING KACHI PURCHASE INVOICE*\n`;
+    msg += `*Party:* ${partyName}\n`;
+    msg += `*Invoice No:* ${invNo}\n`;
+    msg += `*Date:* ${invDate}\n`;
+    msg += `--------------------------------\n`;
+    if (paggaRows) {
+      msg += `📦 *PAGGA DETAILS:*\n${paggaRows}\n`;
+      msg += `--------------------------------\n`;
+    }
+    msg += `📊 *SUMMARY:*\n`;
+    msg += `🔹 *Total Paggas:* ${totalPaggas}\n`;
+    msg += `🔹 *Total Gross Wt:* ${totalGrossWt.toFixed(2)} g\n`;
+    msg += `🔹 *Total Fine:* ${totalFine.toFixed(2)} g\n`;
+    if (invoice.bhavcutSaudaId || invoice.bhavcut) {
+      const bc = invoice.bhavcutSaudaId || invoice.bhavcut;
+      const bcWt = bc.quantity || bc.weight || 0;
+      const bcRate = bc.rate || 0;
+      if (bcWt > 0) {
+        msg += `🔹 *Bhav Cut:* ${bcWt} g @ ₹${Number(bcRate).toLocaleString('en-IN')}\n`;
+      }
+    }
+    msg += `--------------------------------\n`;
+    msg += `_Invoice PDF has been generated._\n`;
+    msg += `Thank you for your business! 🙏`;
+
+    let cleanPhone = String(contactNo).replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+    const whatsappUrl = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const currentPartyValue = selectedPartyId
+    ? parties.find((p) => String(p._id) === String(selectedPartyId)) ||
+      partySearchResults.find((p) => String(p._id) === String(selectedPartyId)) ||
+      (editingInvoice?.partyId && String(editingInvoice.partyId?._id || editingInvoice.partyId) === String(selectedPartyId)
+        ? {
+            _id: String(selectedPartyId),
+            partyName: editingInvoice.partyId?.partyName || editingInvoice.partyName || selectedPartyName || '',
+          }
+        : null) ||
+      (selectedPartyName ? { _id: String(selectedPartyId), partyName: selectedPartyName } : null)
+    : null;
+
+  const partyOptions = React.useMemo(() => {
+    const list = partySearchQuery ? partySearchResults : parties;
+    if (currentPartyValue && currentPartyValue._id) {
+      const exists = list.some((p) => String(p._id) === String(currentPartyValue._id));
+      if (!exists) {
+        return [currentPartyValue, ...list];
+      }
+    }
+    return list;
+  }, [partySearchQuery, partySearchResults, parties, currentPartyValue]);
 
   return (
     <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
@@ -1024,6 +1239,12 @@ const Invoice = () => {
                                 <DownloadIcon />
                               </IconButton>
                             </Tooltip>
+                            <Tooltip title="Send on WhatsApp">
+                              <IconButton size="small" onClick={() => handleShareWhatsApp(invoice, true)}
+                                sx={{ color: '#25D366', '&:hover': { background: 'rgba(37, 211, 102, 0.1)' } }}>
+                                <WhatsAppIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                             <Tooltip title="Print">
                               <IconButton size="small" onClick={() => handleBluetoothPrintInvoice(invoice)}
                                 sx={{ color: '#3b82f6', '&:hover': { background: 'rgba(59, 130, 246, 0.1)' } }}>
@@ -1064,9 +1285,14 @@ const Invoice = () => {
             }}
           >
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', sm: 'center' }, gap: 1, mb: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
-                Create New Invoice
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, color: 'text.primary' }}>
+                  {editingInvoice ? `Edit Invoice: ${editingInvoice.invoiceNo || ''}` : 'Create New Invoice'}
+                </Typography>
+                {editingInvoice && (
+                  <Chip label={`Invoice #${editingInvoice.invoiceNo || ''}`} color="primary" size="small" variant="outlined" />
+                )}
+              </Box>
               <Button
                 variant="outlined"
                 onClick={handleBackToList}
@@ -1083,17 +1309,20 @@ const Invoice = () => {
               </Box>
             )}
             <Grid container spacing={{ xs: 1, sm: 2, md: 3 }}>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={editingInvoice ? 3 : 4}>
                 <Autocomplete
                   loading={false}
                   fullWidth
                   sx={{ minWidth: { md: '200px' } }}
-                  options={partySearchQuery ? partySearchResults : parties}
-                  getOptionLabel={(option) => option.partyName || ''}
-                  isOptionEqualToValue={(option, value) => option?._id === value?._id}
-                  value={parties.find(p => p._id === selectedPartyId) || null}
+                  options={partyOptions}
+                  getOptionLabel={(option) => option?.partyName || ''}
+                  isOptionEqualToValue={(option, value) => {
+                    if (!option || !value) return false;
+                    return String(option._id || option.id || '') === String(value._id || value.id || '');
+                  }}
+                  value={currentPartyValue}
                   onChange={(event, newValue) => {
-                    setSelectedPartyId(newValue?._id || '');
+                    setSelectedPartyId(newValue?._id ? String(newValue._id) : '');
                     setSelectedPartyName(newValue?.partyName || '');
                     setFormError('');
                     setPartySearchQuery('');
@@ -1308,7 +1537,22 @@ const Invoice = () => {
                     </Alert>
                   </Grid>
                 )}
-              <Grid item xs={12} sm={6} md={3}>
+              {editingInvoice && (
+                <Grid item xs={12} sm={6} md={3}>
+                  <TextField
+                    fullWidth
+                    label="Invoice No"
+                    value={editingInvoice.invoiceNo || ''}
+                    InputProps={{ readOnly: true }}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        bgcolor: 'action.hover',
+                      },
+                    }}
+                  />
+                </Grid>
+              )}
+              <Grid item xs={12} sm={6} md={editingInvoice ? 3 : 4}>
                 <TextField
                   fullWidth
                   label="Invoice Date"
@@ -1329,23 +1573,13 @@ const Invoice = () => {
                   }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6} md={3}>
+              <Grid item xs={12} sm={6} md={editingInvoice ? 3 : 4}>
                 <TextField
                   fullWidth
                   label="Pagga Count"
                   type="text"
                   value={paggaCount}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '') {
-                      setPaggaCount('');
-                    } else {
-                      const num = parseInt(value);
-                      if (!isNaN(num) && num >= 1 && num <= 50) {
-                        setPaggaCount(num);
-                      }
-                    }
-                  }}
+                  onChange={(e) => handlePaggaCountChange(e.target.value)}
                   inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', min: 1, max: 50 }}
                   sx={{
                     '& .MuiOutlinedInput-root': {
@@ -1616,7 +1850,7 @@ const Invoice = () => {
                   <Button
                     variant="contained"
                     startIcon={<SaveIcon />}
-                    onClick={handleSaveInvoice}
+                    onClick={editingInvoice ? handleUpdateInvoice : handleSaveInvoice}
                     disabled={!selectedPartyId}
                     sx={{
                       background: gradients.successDark,
@@ -1626,7 +1860,7 @@ const Invoice = () => {
                       },
                     }}
                   >
-                    Save Invoice
+                    {editingInvoice ? 'Update Invoice' : 'Save Invoice'}
                   </Button>
                 </Grid>
               </Grid>
@@ -1723,192 +1957,20 @@ const Invoice = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
+          <Button
+            startIcon={<WhatsAppIcon />}
+            onClick={() => handleShareWhatsApp(selectedInvoice, true)}
+            sx={{ color: '#25D366' }}
+          >
+            WhatsApp
+          </Button>
           <Button onClick={handleCloseViewModal} sx={{ color: '#6366f1' }}>
             Close
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={editModalOpen} onClose={handleCloseEditModal} maxWidth="lg" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
-        <DialogTitle>Edit Invoice</DialogTitle>
-        <DialogContent>
-          <Stack spacing={2} sx={{ mt: 1 }}>
-            <Autocomplete
-              fullWidth
-              sx={{ minWidth: { md: '200px' } }}
-              size="small"
-              loading={false}
-              options={editPartySearchQuery ? editPartySearchResults : parties}
-              getOptionLabel={(option) => option.partyName || ''}
-              isOptionEqualToValue={(option, value) => option?._id === value?._id}
-              value={
-                editPartyId ? (
-                  (editPartySearchQuery ? editPartySearchResults : parties).find((p) => p._id === editPartyId) ||
-                  (editingInvoice?.partyId && (editingInvoice.partyId._id || editingInvoice.partyId) === editPartyId ? { _id: editPartyId, partyName: editingInvoice.partyId.partyName || '' } : null)
-                ) : null
-              }
-              onChange={(e, newValue) => {
-                setEditPartyId(newValue?._id || '');
-                setEditPartySearchQuery('');
-              }}
-              onInputChange={(event, newInputValue, reason) => {
-                if (reason === 'input') {
-                  setEditPartySearchQuery(newInputValue);
-                }
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Party Name"
-                  required
-                  InputLabelProps={{ shrink: true }}
-                />
-              )}
-            />
-            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
-              <TextField
-                fullWidth
-                label="Invoice Date"
-                type="date"
-                value={editInvoiceDate}
-                onChange={(e) => setEditInvoiceDate(e.target.value)}
-                size="small"
-                InputLabelProps={{ shrink: true }}
-              />
-              <TextField
-                fullWidth
-                label="Invoice No"
-                value={editInvoiceNo}
-                onChange={(e) => setEditInvoiceNo(e.target.value)}
-                size="small"
-              />
-            </Stack>
-          </Stack>
 
-          <Typography variant="h6" sx={{ mb: 1, fontWeight: 600 }}>
-            Pagga Details
-          </Typography>
-
-          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<AddIcon />}
-              onClick={handleAddEditPagga}
-              sx={{
-                background: gradients.primary,
-                '&:hover': {
-                  background: gradients.primaryHover,
-                },
-              }}
-            >
-              Add Pagga
-            </Button>
-          </Box>
-
-          <TableContainer component={Paper} elevation={1}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ background: gradients.primary }}>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Sr No</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Pagga No</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Weight (g)</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Touch (%)</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600 }}>Fine (g)</TableCell>
-                  <TableCell sx={{ color: '#fff', fontWeight: 600, width: '80px' }}>Action</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {editCurrentPagga.map((item, index) => (
-                  <TableRow
-                    key={index}
-                  >
-                    <TableCell sx={{ fontWeight: 600 }}>{index + 1}</TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        type="text"
-                        value={item.paggaNo}
-                        onChange={(e) => handleEditPaggaChange(index, 'paggaNo', e.target.value)}
-                        placeholder="Enter Pagga No"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        type="text"
-                        value={item.weight}
-                        onChange={(e) => handleEditPaggaChange(index, 'weight', e.target.value)}
-                        placeholder="0.00"
-                        inputProps={{ inputMode: 'decimal', pattern: '[0-9.]*', step: '0.01' }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        type="text"
-                        value={item.touch}
-                        onChange={(e) => handleEditPaggaChange(index, 'touch', e.target.value)}
-                        placeholder="00.00"
-                        inputProps={{ maxLength: 5 }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        type="text"
-                        value={item.fine}
-                        InputProps={{
-                          readOnly: true,
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleRemoveEditPagga(index)}
-                        sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {editCurrentPagga.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                        No pagga in this invoice. Click "Add Pagga" to add.
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </DialogContent>
-        <DialogActions sx={{ p: 3 }}>
-          <Button onClick={handleCloseEditModal} sx={{ color: '#6366f1' }}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleUpdateInvoice}
-            variant="contained"
-            sx={{
-              background: gradients.successDark,
-              '&:hover': {
-                background: gradients.successDarkHover,
-              },
-            }}
-          >
-            Update Invoice
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog open={showReturnForm} onClose={handleCloseReturnForm} maxWidth="lg" fullWidth sx={{ '& .MuiDialog-paper': { m: { xs: 1, sm: 2 } } }}>
         <DialogTitle>Purchase Return Invoice</DialogTitle>

@@ -22,6 +22,11 @@ import {
   DialogActions,
   Stack,
   Pagination,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -43,6 +48,7 @@ const PartyList = () => {
     email: '',
     type: 'Customer',
     openingBalance: '',
+    openingBalanceType: 'lena',
   });
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [partyToDelete, setPartyToDelete] = useState(null);
@@ -83,14 +89,29 @@ const PartyList = () => {
 
   const handleAddParty = () => {
     setEditingParty(null);
-    setFormData({ partyName: '', contactNo: '', email: '', type: 'Customer', openingBalance: '' });
+    setFormData({ 
+      partyName: '', 
+      contactNo: '', 
+      email: '', 
+      type: 'Customer', 
+      openingBalance: '', 
+      openingBalanceType: 'lena' 
+    });
     setFormError({});
     setOpenDialog(true);
   };
 
   const handleEditParty = (party) => {
     setEditingParty(party);
-    setFormData(party);
+    const rawBal = party.openingBalance !== undefined && party.openingBalance !== null && party.openingBalance !== ''
+      ? Math.abs(Number(party.openingBalance))
+      : '';
+    const balType = party.openingBalanceType || (Number(party.openingBalance) < 0 ? 'dena' : 'lena');
+    setFormData({
+      ...party,
+      openingBalance: rawBal ? rawBal.toString() : '',
+      openingBalanceType: balType,
+    });
     setFormError({});
     setOpenDialog(true);
   };
@@ -140,16 +161,22 @@ const PartyList = () => {
     const toastId = toast.loading(editingParty ? 'Updating party...' : 'Creating party...');
     
     try {
+      const partyPayload = {
+        ...formData,
+        openingBalance: formData.openingBalance ? Math.abs(Number(formData.openingBalance)) : 0,
+        openingBalanceType: formData.openingBalanceType || 'lena',
+      };
+
       if (editingParty) {
         // Update Party API Call
         const updatedParty = {
-          ...formData,
+          ...partyPayload,
           _id: editingParty._id
         };
         await partyService.updatePartyDetails(editingParty._id, updatedParty);
       } else {
         // Save Party API Call
-        await partyService.addPartyDetails(formData);
+        await partyService.addPartyDetails(partyPayload);
       }
 
       setOpenDialog(false);
@@ -269,7 +296,28 @@ const PartyList = () => {
                     />
                   </TableCell>
                   <TableCell sx={{ fontWeight: 500 }}>
-                    {party.openingBalance ? Number(party.openingBalance).toLocaleString('en-IN') : '0'}
+                    {party.openingBalance && Number(party.openingBalance) !== 0 ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <span>₹{Math.abs(Number(party.openingBalance)).toLocaleString('en-IN')}</span>
+                        <Chip
+                          label={party.openingBalanceType === 'dena' || Number(party.openingBalance) < 0 ? 'Dena' : 'Lena'}
+                          size="small"
+                          sx={{
+                            bgcolor: (party.openingBalanceType === 'dena' || Number(party.openingBalance) < 0)
+                              ? 'rgba(236, 72, 153, 0.15)'
+                              : 'rgba(16, 185, 129, 0.15)',
+                            color: (party.openingBalanceType === 'dena' || Number(party.openingBalance) < 0)
+                              ? '#be185d'
+                              : '#047857',
+                            fontWeight: 700,
+                            fontSize: '0.72rem',
+                            height: 22,
+                          }}
+                        />
+                      </Box>
+                    ) : (
+                      '₹0'
+                    )}
                   </TableCell>
                   <TableCell>
                     <IconButton
@@ -342,19 +390,44 @@ const PartyList = () => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </Stack>
-            <TextField
-              fullWidth
-              label="Opening Balance"
-              size="small"
-              value={formData.openingBalance ? Number(formData.openingBalance).toLocaleString('en-IN') : ''}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/,/g, '');
-                if (raw === '' || /^\d*$/.test(raw)) {
-                  setFormData({ ...formData, openingBalance: raw });
-                }
-              }}
-              placeholder="Enter opening balance amount"
-            />
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+              <TextField
+                fullWidth
+                label="Opening Balance Cash (₹)"
+                size="small"
+                value={formData.openingBalance ? Number(formData.openingBalance).toLocaleString('en-IN') : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/,/g, '');
+                  if (raw === '' || /^\d*$/.test(raw)) {
+                    setFormData({ ...formData, openingBalance: raw });
+                  }
+                }}
+                placeholder="0"
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                }}
+              />
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 170 } }}>
+                <InputLabel id="opening-balance-type-label">Cash Type</InputLabel>
+                <Select
+                  labelId="opening-balance-type-label"
+                  label="Cash Type"
+                  value={formData.openingBalanceType || 'lena'}
+                  onChange={(e) => setFormData({ ...formData, openingBalanceType: e.target.value })}
+                  sx={{
+                    fontWeight: 600,
+                    color: formData.openingBalanceType === 'dena' ? '#ec4899' : '#10b981',
+                  }}
+                >
+                  <MenuItem value="lena" sx={{ fontWeight: 600, color: '#10b981' }}>
+                    Lena (लेना)
+                  </MenuItem>
+                  <MenuItem value="dena" sx={{ fontWeight: 600, color: '#ec4899' }}>
+                    Dena (देना)
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

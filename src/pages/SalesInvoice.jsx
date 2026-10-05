@@ -48,6 +48,7 @@ import AssignmentReturnIcon from '@mui/icons-material/AssignmentReturn';
 import PendingIcon from '@mui/icons-material/HourglassEmpty';
 import ExpandMoreIcon from '@mui/icons-material/KeyboardArrowDown';
 import ExpandLessIcon from '@mui/icons-material/KeyboardArrowUp';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import jsPDF from 'jspdf';
 import partyService from '../services/partyService';
 import salesInvoiceService from '../services/salesInvoiceService';
@@ -66,6 +67,7 @@ const SalesInvoice = () => {
   const [loadingKachiPending, setLoadingKachiPending] = useState(false);
   const [expandedKachiGroups, setExpandedKachiGroups] = useState({});
   const [excessFineModalOpen, setExcessFineModalOpen] = useState(false);
+  const [isEditingExcess, setIsEditingExcess] = useState(false);
   const [excessWeight, setExcessWeight] = useState('');
   const [excessRate, setExcessRate] = useState('');
   const [excessFine, setExcessFine] = useState(0);
@@ -93,6 +95,8 @@ const SalesInvoice = () => {
   const [editInvoiceDate, setEditInvoiceDate] = useState('');
   const [editAvailablePagga, setEditAvailablePagga] = useState([]);
   const [editCurrentPagga, setEditCurrentPagga] = useState([]);
+  const [deletePaggaConfirmOpen, setDeletePaggaConfirmOpen] = useState(false);
+  const [paggaToDelete, setPaggaToDelete] = useState(null);
   const [editPartySearchQuery, setEditPartySearchQuery] = useState('');
   const [editPartySearchResults, setEditPartySearchResults] = useState([]);
   const [returnModalOpen, setReturnModalOpen] = useState(false);
@@ -115,7 +119,7 @@ const SalesInvoice = () => {
   useEffect(() => {
     const fetchParties = async () => {
       try {
-        const response = await partyService.getParties();
+        const response = await partyService.getParties({ limit: 1000 });
         if (response && response.parties) {
           setParties(response.parties);
         }
@@ -311,13 +315,46 @@ const SalesInvoice = () => {
   };
 
   const handleExcessFineSubmit = async () => {
-    const toastId = toast.loading('Creating sales invoice...');
+    const toastId = toast.loading(isEditingExcess ? 'Updating sales invoice...' : 'Creating sales invoice...');
     try {
       setFormError('');
 
       if (!excessWeight || !excessRate) {
         toast.dismiss(toastId);
         setFormError('Please fill weight and rate');
+        return;
+      }
+
+      if (isEditingExcess) {
+        const salesInvoiceData = {
+          partyId: editPartyId,
+          invoiceDate: editInvoiceDate,
+          paggaIds: editCurrentPagga,
+          bhavcut: {
+            weight: Number(excessWeight),
+            rate: Number(excessRate),
+            amount: excessFine
+          }
+        };
+        await salesInvoiceService.updateSalesInvoiceDetails(editingInvoice._id || editingInvoice.id, salesInvoiceData);
+
+        const params = { page, limit };
+        if (filterStartDate) params.startDate = filterStartDate;
+        if (filterEndDate) params.endDate = filterEndDate;
+        if (filterPartyId) params.partyId = filterPartyId;
+
+        const response = await salesInvoiceService.getSalesInvoices(params);
+        setSalesInvoices(response?.salesInvoices || response || []);
+
+        setEditModalOpen(false);
+        setEditingInvoice(null);
+        setEditAvailablePagga([]);
+        setEditCurrentPagga([]);
+        setEditPartyId('');
+        setEditInvoiceDate('');
+        handleCloseExcessFineModal();
+        toast.dismiss(toastId);
+        toast.success('Sales invoice updated successfully');
         return;
       }
 
@@ -334,7 +371,8 @@ const SalesInvoice = () => {
         }
       };
 
-      await salesInvoiceService.createSalesInvoice(salesInvoiceData);
+      const createdRes = await salesInvoiceService.createSalesInvoice(salesInvoiceData);
+      const createdInvoice = createdRes?.data?.salesInvoice || createdRes?.salesInvoice || createdRes;
 
       // Refresh sales invoices list with filter params
       const params = {
@@ -360,6 +398,18 @@ const SalesInvoice = () => {
 
       const paggaResponse = await salesInvoiceService.getAvailablePagga();
       setAvailablePagga(paggaResponse?.puggas || []);
+
+      if (createdInvoice) {
+        const fullParty = parties.find(p => String(p._id) === String(selectedPartyId));
+        if (!createdInvoice.partyId || typeof createdInvoice.partyId !== 'object') {
+          createdInvoice.partyId = fullParty || { _id: selectedPartyId, partyName: selectedPartyName };
+        }
+        const selectedPaggaObjects = availablePagga.filter(p => selectedPaggaIds.includes(String(p._id)));
+        if (!createdInvoice.paggaIds || createdInvoice.paggaIds.length === 0 || typeof createdInvoice.paggaIds[0] === 'string') {
+          createdInvoice.paggaIds = selectedPaggaObjects;
+        }
+        handleShareWhatsApp(createdInvoice, true);
+      }
 
       setSelectedPartyId('');
       setSelectedPartyName('');
@@ -400,6 +450,7 @@ const SalesInvoice = () => {
 
   const handleCloseExcessFineModal = () => {
     setExcessFineModalOpen(false);
+    setIsEditingExcess(false);
     setExcessWeight('');
     setExcessRate('');
     setExcessFine(0);
@@ -462,7 +513,8 @@ const SalesInvoice = () => {
         paggaIds: selectedPaggaIds,
       };
 
-      await salesInvoiceService.createSalesInvoice(salesInvoiceData);
+      const createdRes = await salesInvoiceService.createSalesInvoice(salesInvoiceData);
+      const createdInvoice = createdRes?.data?.salesInvoice || createdRes?.salesInvoice || createdRes;
 
       // Refresh sales invoices list with filter params
       const params = {
@@ -490,6 +542,18 @@ const SalesInvoice = () => {
       // Refetch available pagga list
       const paggaResponse = await salesInvoiceService.getAvailablePagga();
       setAvailablePagga(paggaResponse?.puggas || []);
+
+      if (createdInvoice) {
+        const fullParty = parties.find(p => String(p._id) === String(selectedPartyId));
+        if (!createdInvoice.partyId || typeof createdInvoice.partyId !== 'object') {
+          createdInvoice.partyId = fullParty || { _id: selectedPartyId, partyName: selectedPartyName };
+        }
+        const selectedPaggaObjects = availablePagga.filter(p => selectedPaggaIds.includes(String(p._id)));
+        if (!createdInvoice.paggaIds || createdInvoice.paggaIds.length === 0 || typeof createdInvoice.paggaIds[0] === 'string') {
+          createdInvoice.paggaIds = selectedPaggaObjects;
+        }
+        handleShareWhatsApp(createdInvoice, true);
+      }
 
       setSelectedPartyId('');
       setSelectedPartyName('');
@@ -600,6 +664,80 @@ const SalesInvoice = () => {
     doc.save(`${partyName}-${invoice?.salesInvoiceNo || invoice._id}.pdf`);
   };
 
+  const handleShareWhatsApp = (invoice, shouldDownloadPdf = true) => {
+    if (!invoice) return;
+    if (shouldDownloadPdf) {
+      try {
+        handlePrintSalesInvoice(invoice);
+      } catch (err) {
+        console.error('Error generating PDF for WhatsApp:', err);
+      }
+    }
+
+    const party = (invoice.partyId && typeof invoice.partyId === 'object') ? invoice.partyId : {};
+    const partyName = party.partyName || invoice.partyName || selectedPartyName || '-';
+    let contactNo = party.contactNo || '';
+    if (!contactNo && parties.length > 0) {
+      const pId = party._id || invoice.partyId;
+      const found = parties.find(p => String(p._id) === String(pId));
+      if (found && found.contactNo) contactNo = found.contactNo;
+    }
+
+    const invNo = invoice.salesInvoiceNo || 'SINV-' + String(invoice._id || invoice.id || '').slice(-4);
+    const invDate = invoice.invoiceDate ? new Date(invoice.invoiceDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+
+    const paggaList = (invoice.paggaIds || []).filter(item => item && (item.paggaNo || item.weight || item.touch || item.fine));
+    const totalPaggas = paggaList.length;
+
+    let totalGrossWt = 0;
+    let totalFine = 0;
+
+    const paggaRows = paggaList.map((item, idx) => {
+      const weight = parseFloat(item.weight) || 0;
+      const touch = parseFloat(item.touch) || 0;
+      const fine = item.fine != null ? parseFloat(item.fine) : (weight * touch / 100);
+      totalGrossWt += weight;
+      totalFine += roundOffFine(fine);
+      return `${idx + 1}. *#${item.paggaNo || '-'}* | Wt: ${weight.toFixed(2)}g | Touch: ${touch.toFixed(2)}% | Fine: ${roundOffFineFormatted(fine)}g`;
+    }).join('\n');
+
+    let msg = `*BR JEWELLERS*\n`;
+    msg += `--------------------------------\n`;
+    msg += `📤 *OUTGOING KACHI SALES INVOICE*\n`;
+    msg += `*Party:* ${partyName}\n`;
+    msg += `*Invoice No:* ${invNo}\n`;
+    msg += `*Date:* ${invDate}\n`;
+    msg += `--------------------------------\n`;
+    if (paggaRows) {
+      msg += `📦 *PAGGA DETAILS:*\n${paggaRows}\n`;
+      msg += `--------------------------------\n`;
+    }
+    msg += `📊 *SUMMARY:*\n`;
+    msg += `🔹 *Total Paggas:* ${totalPaggas}\n`;
+    msg += `🔹 *Total Gross Wt:* ${totalGrossWt.toFixed(2)} g\n`;
+    msg += `🔹 *Total Fine:* ${totalFine.toFixed(2)} g\n`;
+    if (invoice.bhavcutSaudaId || invoice.bhavcut) {
+      const bc = invoice.bhavcutSaudaId || invoice.bhavcut;
+      const bcWt = bc.quantity || bc.weight || 0;
+      const bcRate = bc.rate || 0;
+      if (bcWt > 0) {
+        msg += `🔹 *Bhav Cut:* ${bcWt} g @ ₹${Number(bcRate).toLocaleString('en-IN')}\n`;
+      }
+    }
+    msg += `--------------------------------\n`;
+    msg += `_Invoice PDF has been generated._\n`;
+    msg += `Thank you for your business! 🙏`;
+
+    let cleanPhone = String(contactNo).replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+    const whatsappUrl = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleBluetoothPrintSalesInvoice = async (invoice) => {
     const toastId = toast.loading('Printing sales invoice...');
     try {
@@ -615,11 +753,16 @@ const SalesInvoice = () => {
 
   const handleEditSalesInvoice = async (invoice) => {
     setEditingInvoice(invoice);
-    setEditPartyId(invoice.partyId?._id || invoice.partyId);
+    const pId = invoice.partyId?._id || invoice.partyId;
+    setEditPartyId(pId);
     setEditInvoiceDate(invoice.invoiceDate);
 
     // Set current pagga from the invoice
     setEditCurrentPagga(invoice.paggaIds || []);
+
+    if (pId) {
+      fetchPartySaudaSummary(pId);
+    }
 
     // Fetch available pagga
     try {
@@ -786,6 +929,25 @@ const SalesInvoice = () => {
     }
   };
 
+  const handleInitiateRemovePagga = (pagga) => {
+    setPaggaToDelete(pagga);
+    setDeletePaggaConfirmOpen(true);
+  };
+
+  const handleConfirmRemovePagga = () => {
+    if (paggaToDelete) {
+      setEditCurrentPagga(prev => prev.filter(p => p._id !== paggaToDelete._id));
+      toast.info(`Pagga #${paggaToDelete.paggaNo} invoice se hata diya gaya`);
+    }
+    setDeletePaggaConfirmOpen(false);
+    setPaggaToDelete(null);
+  };
+
+  const handleCancelRemovePagga = () => {
+    setDeletePaggaConfirmOpen(false);
+    setPaggaToDelete(null);
+  };
+
   const handleRemoveEditPagga = (paggaId) => {
     setEditCurrentPagga(prev => prev.filter(p => p._id !== paggaId));
   };
@@ -845,6 +1007,39 @@ const SalesInvoice = () => {
         toast.dismiss(toastId);
         toast.error('Please select a party');
         return;
+      }
+
+      // Check if not return invoice and fine exceeds available pending sales fine
+      if (!editingInvoice?.isReturn) {
+        const newTotalFine = editCurrentPagga.reduce((total, item) => {
+          const weight = parseFloat(item.weight) || 0;
+          const touch = parseFloat(item.touch) || 0;
+          const fine = weight * touch / 100;
+          return total + roundOffFine(fine);
+        }, 0);
+
+        const oldTotalFine = (editingInvoice.paggaIds || []).reduce((total, item) => {
+          const weight = parseFloat(item.weight) || 0;
+          const touch = parseFloat(item.touch) || 0;
+          const fine = weight * touch / 100;
+          return total + roundOffFine(fine);
+        }, 0);
+        const oldBhavcutWeight = Number(editingInvoice.bhavcutSaudaId?.quantity || 0);
+        const oldNormalCut = Math.max(0, oldTotalFine - oldBhavcutWeight);
+
+        const currentPartyRemaining = Number(partySaudaSummary?.sales?.remaining || 0);
+        const effectiveAvailable = currentPartyRemaining + oldNormalCut;
+
+        if (newTotalFine > effectiveAvailable) {
+          toast.dismiss(toastId);
+          const excess = roundOffFine(newTotalFine - effectiveAvailable);
+          setExcessFine(excess);
+          setExcessWeight(excess.toFixed(2));
+          setExcessRate(editingInvoice.bhavcutSaudaId?.rate ? String(editingInvoice.bhavcutSaudaId.rate) : '');
+          setIsEditingExcess(true);
+          setExcessFineModalOpen(true);
+          return;
+        }
       }
 
       const invoiceData = {
@@ -1720,6 +1915,15 @@ const SalesInvoice = () => {
                         </Tooltip>
                       </TableCell>
                       <TableCell>
+                        <Tooltip title="Send on WhatsApp">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleShareWhatsApp(invoice, true)}
+                            sx={{ color: '#25D366', '&:hover': { background: 'rgba(37, 211, 102, 0.1)' } }}
+                          >
+                            <WhatsAppIcon />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Download PDF">
                           <IconButton
                             size="small"
@@ -1886,7 +2090,45 @@ const SalesInvoice = () => {
               </Box>
             )}
           </DialogContent>
-          <DialogActions sx={{ p: 3 }}>
+          <DialogActions sx={{ p: 3, justifyContent: 'space-between' }}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {selectedInvoice && (
+                <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<WhatsAppIcon />}
+                    onClick={() => handleShareWhatsApp(selectedInvoice, true)}
+                    sx={{
+                      color: '#25D366',
+                      borderColor: '#25D366',
+                      fontWeight: 600,
+                      '&:hover': {
+                        borderColor: '#128C7E',
+                        background: 'rgba(37, 211, 102, 0.08)',
+                      },
+                    }}
+                  >
+                    WhatsApp & PDF
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => handlePrintSalesInvoice(selectedInvoice)}
+                    sx={{
+                      color: '#10b981',
+                      borderColor: '#10b981',
+                      fontWeight: 600,
+                      '&:hover': {
+                        borderColor: '#059669',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                      },
+                    }}
+                  >
+                    PDF
+                  </Button>
+                </>
+              )}
+            </Box>
             <Button onClick={handleCloseViewModal} sx={{ color: '#6366f1' }}>
               Close
             </Button>
@@ -1979,13 +2221,15 @@ const SalesInvoice = () => {
                         <TableCell>{pagga.touch}</TableCell>
                         <TableCell sx={{ fontWeight: 600 }}>{roundedFine}</TableCell>
                         <TableCell>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleRemoveEditPagga(pagga._id)}
-                            sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                          <Tooltip title="Remove Pagga from Invoice">
+                            <IconButton
+                              size="small"
+                              onClick={() => handleInitiateRemovePagga(pagga)}
+                              sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
                         </TableCell>
                       </TableRow>
                     );
@@ -2076,6 +2320,96 @@ const SalesInvoice = () => {
               }}
             >
               Update
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Delete Pagga Confirmation Dialog */}
+        <Dialog
+          open={deletePaggaConfirmOpen}
+          onClose={handleCancelRemovePagga}
+          maxWidth="xs"
+          fullWidth
+          sx={{ '& .MuiDialog-paper': { borderRadius: 2, overflow: 'hidden' } }}
+        >
+          <DialogTitle
+            sx={{
+              background: gradients.danger,
+              color: '#fff',
+              fontWeight: 600,
+              py: 1.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+            }}
+          >
+            <DeleteIcon /> Confirm Pagga Removal
+          </DialogTitle>
+          <DialogContent sx={{ pt: 3, pb: 2 }}>
+            {paggaToDelete && (
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                <Typography variant="body1" sx={{ color: 'text.primary', fontWeight: 500 }}>
+                  Kya aap is pagga ko invoice se hatana chahte hain?
+                </Typography>
+
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: 'rgba(239, 68, 68, 0.05)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                  }}
+                >
+                  <Grid container spacing={1.5}>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Pagga No</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ef4444' }}>
+                        #{paggaToDelete.paggaNo}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Gross Weight</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {paggaToDelete.weight} g
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Touch</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        {paggaToDelete.touch} %
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                      <Typography variant="caption" color="text.secondary">Fine</Typography>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: '#ec4899' }}>
+                        {roundOffFineFormatted((parseFloat(paggaToDelete.weight) || 0) * (parseFloat(paggaToDelete.touch) || 0) / 100)} g
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Box>
+
+                <Alert severity="warning" sx={{ py: 0.5, fontSize: '0.8rem' }}>
+                  Yeh pagga invoice se hatkar dobara available stock me aa jayega.
+                </Alert>
+              </Stack>
+            )}
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, justifyContent: 'flex-end', gap: 1 }}>
+            <Button
+              onClick={handleCancelRemovePagga}
+              variant="outlined"
+              sx={{ color: 'text.secondary', borderColor: 'divider' }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmRemovePagga}
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              sx={{ fontWeight: 600 }}
+            >
+              Yes, Remove Pagga
             </Button>
           </DialogActions>
         </Dialog>

@@ -22,6 +22,8 @@ import {
   DialogActions,
   TextField,
   Autocomplete,
+  IconButton,
+  Tooltip,
 } from '@mui/material';
 import {
   ArrowDownward as IncomingIcon,
@@ -31,6 +33,7 @@ import {
   Print as PrintIcon,
   Add as AddIcon,
 } from '@mui/icons-material';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import caseService from '../services/caseService';
 import partyService from '../services/partyService';
 import { gradients } from '../theme';
@@ -177,7 +180,7 @@ const CaseBook = () => {
 
     setSaving(true);
     try {
-      await caseService.createPayment({
+      const res = await caseService.createPayment({
         paymentType: addPaymentType,
         paymentDate,
         amount: numAmount,
@@ -185,6 +188,10 @@ const CaseBook = () => {
         partyId: selectedParty._id || selectedParty.id,
         allocations: allocationArray
       });
+      const createdPayment = res?.data?.payment || res?.payment || res;
+      if (createdPayment) {
+        handleSharePaymentWhatsApp(createdPayment, selectedParty);
+      }
       toast.success(`${addPaymentType === 'incoming' ? 'Incoming' : 'Outgoing'} payment added successfully`);
       handleCloseAddModal();
       fetchCashBook();
@@ -194,6 +201,59 @@ const CaseBook = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSharePaymentWhatsApp = (payment, party) => {
+    if (!payment) return;
+    const isIncoming = payment.paymentType === 'incoming' || payment.type === 'incoming';
+    const resolvedParty = party || payment.party || payment.partyId || selectedParty || {};
+    const pName = resolvedParty.partyName || payment.partyName || payment.particular || '-';
+    let contactNo = resolvedParty.contactNo || '';
+    if (!contactNo && parties.length > 0) {
+      const pId = resolvedParty._id || payment.partyId;
+      const found = parties.find(p => String(p._id) === String(pId) || p.partyName === pName);
+      if (found && found.contactNo) contactNo = found.contactNo;
+    }
+
+    const pNo = payment.paymentNo || payment.voucherNo || (isIncoming ? 'REC-' : 'VOU-') + String(payment._id || '').slice(-4);
+    const dateStr = payment.paymentDate || payment.date ? new Date(payment.paymentDate || payment.date).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+    const amtStr = Number(payment.amount || payment.debit || payment.credit || 0).toLocaleString('en-IN');
+
+    let modeStr = 'Cash';
+    if (payment.paymentMode === 'bank_transfer') modeStr = 'Bank Transfer';
+    else if (payment.paymentMode === 'cheque') modeStr = 'Cheque';
+    else if (payment.paymentMode === 'upi') modeStr = 'UPI';
+
+    const typeTitle = isIncoming 
+      ? '🟢 *PAYMENT RECEIPT (रसीद - जमा)*' 
+      : '🔴 *PAYMENT VOUCHER (भुगतान - दिया)*';
+    const actionLabel = isIncoming ? 'Amount Received (जमा)' : 'Amount Paid (भुगतान)';
+
+    let msg = `*BR JEWELLERS*\n`;
+    msg += `--------------------------------\n`;
+    msg += `${typeTitle}\n`;
+    msg += `*Party:* ${pName}\n`;
+    msg += `*${isIncoming ? 'Receipt No' : 'Voucher No'}:* ${pNo}\n`;
+    msg += `*Date:* ${dateStr}\n`;
+    msg += `--------------------------------\n`;
+    msg += `💵 *${actionLabel}:* ₹${amtStr}\n`;
+    msg += `💳 *Payment Mode:* ${modeStr}\n`;
+    if (payment.remark) {
+      msg += `📝 *Remark:* ${payment.remark}\n`;
+    }
+    msg += `--------------------------------\n`;
+    msg += isIncoming 
+      ? `Thank you for your payment! 🙏\n*BR JEWELLERS*` 
+      : `Payment processed successfully! 🙏\n*BR JEWELLERS*`;
+
+    let cleanPhone = String(contactNo).replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+    const whatsappUrl = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+    window.open(whatsappUrl, '_blank');
   };
 
   // Prepare combined transactions for tally-style print
@@ -369,6 +429,7 @@ const CaseBook = () => {
                     <TableCell sx={{ color: '#fff', fontWeight: 600, textAlign: 'right', width: '120px' }}>Debit (&#8377;)</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600, textAlign: 'right', width: '120px' }}>Credit (&#8377;)</TableCell>
                     <TableCell sx={{ color: '#fff', fontWeight: 600, textAlign: 'right', width: '120px' }}>Balance (&#8377;)</TableCell>
+                    <TableCell sx={{ color: '#fff', fontWeight: 600, width: '50px', textAlign: 'center' }}>Action</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -412,6 +473,24 @@ const CaseBook = () => {
                       <TableCell sx={{ fontSize: '0.875rem', textAlign: 'right', fontWeight: 700 }}>
                         {Math.trunc(t.balance).toLocaleString('en-IN')}
                       </TableCell>
+                      <TableCell sx={{ textAlign: 'center' }}>
+                        <Tooltip title="Send on WhatsApp">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleSharePaymentWhatsApp({
+                              paymentType: t.type,
+                              partyName: t.particular,
+                              paymentNo: t.voucherNo,
+                              paymentDate: t.date,
+                              amount: t.debit > 0 ? t.debit : t.credit,
+                              remark: t.remark
+                            })}
+                            sx={{ color: '#25D366', '&:hover': { background: 'rgba(37, 211, 102, 0.1)' } }}
+                          >
+                            <WhatsAppIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </TableCell>
                     </TableRow>
                   ))}
                   <TableRow sx={{ background: 'rgba(0, 0, 0, 0.04)', '& td': { borderTop: '2px solid', borderColor: 'divider' } }}>
@@ -425,6 +504,7 @@ const CaseBook = () => {
                     <TableCell sx={{ fontWeight: 700, textAlign: 'right', color: balance >= 0 ? '#6366f1' : '#ef4444' }}>
                       {Math.trunc(balance).toLocaleString('en-IN')}
                     </TableCell>
+                    <TableCell></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>

@@ -119,9 +119,12 @@ const PartyLedger = () => {
     }
   };
 
-  const openingBalance = Math.trunc(party?.openingBalance || 0);
-  let totalDebit = openingBalance > 0 ? openingBalance : 0;
-  let totalCredit = openingBalance < 0 ? Math.abs(openingBalance) : 0;
+  const rawOpening = Math.abs(Math.trunc(party?.openingBalance || 0));
+  const isDena = party?.openingBalanceType === 'dena';
+  const openingDebit = (rawOpening > 0 && isDena) ? rawOpening : 0;
+  const openingCredit = (rawOpening > 0 && !isDena) ? rawOpening : 0;
+  let totalDebit = openingDebit;
+  let totalCredit = openingCredit;
 
   const getDebitAmount = (entry) => {
     if (entry.type === 'payment') {
@@ -272,10 +275,27 @@ const PartyLedger = () => {
               <TableBody>
                 <TableRow sx={{ background: 'rgba(0,0,0,0.04)' }}>
                   <TableCell>-</TableCell>
-                  <TableCell><strong>Opening Balance</strong></TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                      <strong>Opening Balance</strong>
+                      {rawOpening > 0 && (
+                        <Chip
+                          label={isDena ? 'Dena' : 'Lena'}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            bgcolor: isDena ? 'rgba(236, 72, 153, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                            color: isDena ? '#be185d' : '#047857',
+                          }}
+                        />
+                      )}
+                    </Box>
+                  </TableCell>
                   <TableCell>-</TableCell>
-                  <TableCell>{openingBalance > 0 ? openingBalance : '-'}</TableCell>
-                  <TableCell>{openingBalance < 0 ? Math.abs(openingBalance) : '-'}</TableCell>
+                  <TableCell>{openingDebit > 0 ? openingDebit : '-'}</TableCell>
+                  <TableCell>{openingCredit > 0 ? openingCredit : '-'}</TableCell>
                   <TableCell sx={{ fontWeight: 600 }}>{Math.trunc(totalDebit - totalCredit)}</TableCell>
                   <TableCell></TableCell>
                 </TableRow>

@@ -115,10 +115,11 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
 
   let totalDebit = 0;
   let totalCredit = 0;
-  const openingBalance = Math.trunc(party?.openingBalance || 0);
-  const openingDebit = openingBalance > 0 ? openingBalance : 0;
-  const openingCredit = openingBalance < 0 ? Math.abs(openingBalance) : 0;
-  let runningBal =  openingDebit - openingCredit;
+  const rawOpening = Math.abs(Math.trunc(party?.openingBalance || 0));
+  const isDena = party?.openingBalanceType === 'dena';
+  const openingDebit = (rawOpening > 0 && isDena) ? rawOpening : 0;
+  const openingCredit = (rawOpening > 0 && !isDena) ? rawOpening : 0;
+  let runningBal = openingDebit - openingCredit;
 
   htmlContent += `
     <html>
@@ -173,7 +174,7 @@ export async function printPartyLedger(party, entries, summary, pendingSaudas, s
           <tr class="opening-row">
             <td class="center">-</td>
             <td>-</td>
-            <td>Opening Balance</td>
+            <td>Opening Balance ${rawOpening > 0 ? (isDena ? '(Dena)' : '(Lena)') : ''}</td>
             <td class="num">-</td>
             <td class="num">${openingDebit || ''}</td>
             <td class="num">${openingCredit || ''}</td>

@@ -28,6 +28,7 @@ import {
   Autocomplete,
   Stack,
   Pagination,
+  Tooltip,
 } from '@mui/material';
 import {
   ArrowUpward as IncomingIcon,
@@ -37,6 +38,7 @@ import {
   Visibility as ViewIcon,
   Edit as EditIcon,
 } from '@mui/icons-material';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import caseService from '../services/caseService';
 import partyService from '../services/partyService';
 import { gradients } from '../theme';
@@ -149,6 +151,59 @@ const Case = () => {
     return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + lastThree;
   };
 
+  const handleSharePaymentWhatsApp = (payment, party) => {
+    if (!payment) return;
+    const isIncoming = payment.paymentType === 'incoming';
+    const resolvedParty = party || payment.party || payment.partyId || selectedParty || {};
+    const pName = resolvedParty.partyName || payment.partyName || partyName || '-';
+    let contactNo = resolvedParty.contactNo || '';
+    if (!contactNo && parties.length > 0) {
+      const pId = resolvedParty._id || payment.partyId;
+      const found = parties.find(p => String(p._id) === String(pId));
+      if (found && found.contactNo) contactNo = found.contactNo;
+    }
+
+    const pNo = payment.paymentNo || (isIncoming ? 'REC-' : 'VOU-') + String(payment._id || '').slice(-4);
+    const dateStr = payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB');
+    const amtStr = Number(payment.amount || 0).toLocaleString('en-IN');
+
+    let modeStr = 'Cash';
+    if (payment.paymentMode === 'bank_transfer') modeStr = 'Bank Transfer';
+    else if (payment.paymentMode === 'cheque') modeStr = 'Cheque';
+    else if (payment.paymentMode === 'upi') modeStr = 'UPI';
+
+    const typeTitle = isIncoming 
+      ? '🟢 *PAYMENT RECEIPT (रसीद - जमा)*' 
+      : '🔴 *PAYMENT VOUCHER (भुगतान - दिया)*';
+    const actionLabel = isIncoming ? 'Amount Received (जमा)' : 'Amount Paid (भुगतान)';
+
+    let msg = `*BR JEWELLERS*\n`;
+    msg += `--------------------------------\n`;
+    msg += `${typeTitle}\n`;
+    msg += `*Party:* ${pName}\n`;
+    msg += `*${isIncoming ? 'Receipt No' : 'Voucher No'}:* ${pNo}\n`;
+    msg += `*Date:* ${dateStr}\n`;
+    msg += `--------------------------------\n`;
+    msg += `💵 *${actionLabel}:* ₹${amtStr}\n`;
+    msg += `💳 *Payment Mode:* ${modeStr}\n`;
+    if (payment.remark) {
+      msg += `📝 *Remark:* ${payment.remark}\n`;
+    }
+    msg += `--------------------------------\n`;
+    msg += isIncoming 
+      ? `Thank you for your payment! 🙏\n*BR JEWELLERS*` 
+      : `Payment processed successfully! 🙏\n*BR JEWELLERS*`;
+
+    let cleanPhone = String(contactNo).replace(/\D/g, '');
+    if (cleanPhone.length === 10) cleanPhone = '91' + cleanPhone;
+
+    const whatsappUrl = cleanPhone 
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+      : `https://wa.me/?text=${encodeURIComponent(msg)}`;
+
+    window.open(whatsappUrl, '_blank');
+  };
+
   const handleSaveCase = async () => {
     const toastId = toast.loading(isEdit ? 'Updating payment...' : 'Creating payment...');
     try {
@@ -162,7 +217,11 @@ const Case = () => {
       if (isEdit) {
         await caseService.updatePayment(editingCaseId, paymentData);
       } else {
-        await caseService.createPayment(paymentData);
+        const createdRes = await caseService.createPayment(paymentData);
+        const createdPayment = createdRes?.data?.payment || createdRes?.payment || createdRes;
+        if (createdPayment) {
+          handleSharePaymentWhatsApp(createdPayment, selectedParty);
+        }
       }
       handleCloseModal();
       fetchCases();
@@ -286,6 +345,15 @@ const Case = () => {
                         {caseItem.paymentDate ? new Date(caseItem.paymentDate).toLocaleDateString('en-GB') : '-'}
                       </TableCell>
                       <TableCell>
+                        <Tooltip title="Send on WhatsApp">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleSharePaymentWhatsApp(caseItem)}
+                            sx={{ color: '#25D366', '&:hover': { background: 'rgba(37, 211, 102, 0.1)' } }}
+                          >
+                            <WhatsAppIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <IconButton
                           size="small"
                           onClick={() => handleEditCase(caseItem)}
